@@ -9,10 +9,13 @@ import org.apache.shiro.mgt.DefaultSessionStorageEvaluator;
 import org.apache.shiro.mgt.DefaultSubjectDAO;
 import org.apache.shiro.mgt.SecurityManager;
 import org.apache.shiro.realm.Realm;
+import org.apache.shiro.session.mgt.DefaultSessionManager;
+import org.apache.shiro.session.mgt.SessionManager;
 import org.apache.shiro.spring.LifecycleBeanPostProcessor;
 import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
 import org.apache.shiro.web.mgt.DefaultWebSecurityManager;
+import org.apache.shiro.web.session.mgt.DefaultWebSessionManager;
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -86,19 +89,39 @@ public class ShiroConfig {
     }
 
     /**
+     * 配置会话管理器
+     *
+     * @return SessionManager
+     */
+    @Bean
+    public SessionManager sessionManager() {
+        DefaultWebSessionManager sessionManager = new DefaultWebSessionManager();
+        // 禁用会话Cookie
+        sessionManager.setSessionIdCookieEnabled(false);
+        // 禁用URL重写(URL中不会出现jsessionid参数)
+        sessionManager.setSessionIdUrlRewritingEnabled(false);
+        return sessionManager;
+    }
+
+    /**
      * 配置安全管理器
      *
      * @param userRealm 用户Realm
      * @param authenticator 认证器
      * @param authorizer 授权器
+     * @param sessionManager 会话管理器
      * @return SecurityManager
      */
     @Bean
-    public SecurityManager securityManager(UserRealm userRealm, ModularRealmAuthenticator authenticator, ModularRealmAuthorizer authorizer) {
+    public SecurityManager securityManager(UserRealm userRealm, 
+                                          ModularRealmAuthenticator authenticator, 
+                                          ModularRealmAuthorizer authorizer,
+                                          SessionManager sessionManager) {
         DefaultWebSecurityManager securityManager = new DefaultWebSecurityManager();
         securityManager.setRealm(userRealm);
         securityManager.setAuthenticator(authenticator);
         securityManager.setAuthorizer(authorizer);
+        securityManager.setSessionManager(sessionManager);
 
         // 禁用Session
         DefaultSubjectDAO subjectDAO = new DefaultSubjectDAO();
