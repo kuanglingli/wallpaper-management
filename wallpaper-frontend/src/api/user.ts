@@ -9,6 +9,13 @@ export function login(data: LoginParams) {
 }
 
 /**
+ * 用户注册
+ */
+export function register(data: LoginParams) {
+  return request.post<any, ApiResponse<any>>('/user/register', data)
+}
+
+/**
  * 获取用户信息
  */
 export function getUserInfo() {
