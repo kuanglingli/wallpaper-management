@@ -111,15 +111,20 @@ public class JwtFilter extends AuthenticatingFilter {
     private String getRequestToken(HttpServletRequest request) {
         // 从请求头中获取Token
         String token = request.getHeader("Authorization");
+        log.info("从请求头中获取Authorization: {}", token);
+        
         if (StrUtil.isNotBlank(token)) {
             // 如果Token以Bearer开头，则去掉Bearer
             if (token.startsWith("Bearer ")) {
                 token = token.substring(7);
+                log.info("提取Bearer后的token: {}", token);
             }
             return token;
         }
         // 如果请求头中没有Token，则从请求参数中获取
-        return request.getParameter("token");
+        token = request.getParameter("token");
+        log.info("从请求参数中获取token: {}", token);
+        return token;
     }
 
     /**

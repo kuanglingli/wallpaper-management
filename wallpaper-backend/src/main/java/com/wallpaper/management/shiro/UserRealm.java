@@ -85,31 +85,43 @@ public class UserRealm extends AuthorizingRealm {
     @Override
     protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken authenticationToken) throws AuthenticationException {
         String token = (String) authenticationToken.getPrincipal();
+        
+        log.info("进入认证方法，收到token: {}", token);
 
         // 校验Token
-        if (!JwtUtil.verify(token)) {
+        boolean isValid = JwtUtil.verify(token);
+        log.info("Token验证结果: {}", isValid);
+        
+        if (!isValid) {
+            log.warn("Token验证失败，已失效");
             throw new AuthenticationException("Token已失效");
         }
 
         // 获取用户信息
         String username = JwtUtil.getUsername(token);
         Long userId = JwtUtil.getUserId(token);
+        log.info("从Token中获取用户信息 - username: {}, userId: {}", username, userId);
         
         // 校验用户是否存在
         SysUser user = sysUserService.getByUsername(username);
         if (user == null) {
+            log.warn("用户不存在: {}", username);
             throw new UnknownAccountException("用户不存在");
         }
         
         // 校验用户状态
         if (user.getStatus() == 0) {
+            log.warn("用户已被禁用: {}", username);
             throw new LockedAccountException("用户已被禁用");
         }
         
         // 校验用户ID是否匹配
         if (!userId.equals(user.getId())) {
+            log.warn("Token与用户不匹配 - tokenUserId: {}, actualUserId: {}", userId, user.getId());
             throw new AuthenticationException("Token与用户不匹配");
         }
+        
+        log.info("认证成功 - username: {}, userId: {}", username, userId);
 
         return new SimpleAuthenticationInfo(token, token, getName());
     }

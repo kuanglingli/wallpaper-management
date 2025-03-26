@@ -31,11 +31,13 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     public void setSecret(String secret) {
         JwtUtil.secret = secret;
+        log.info("JWT密钥已设置，长度: {}", secret != null ? secret.length() : 0);
     }
 
     @Value("${jwt.expire}")
     public void setExpire(long expire) {
         JwtUtil.expire = expire;
+        log.info("JWT过期时间已设置: {}秒", expire);
     }
 
     /**
@@ -46,15 +48,20 @@ public class JwtUtil {
      * @return JWT令牌
      */
     public static String generateToken(Long userId, String username) {
+        log.info("开始生成JWT令牌 - userId: {}, username: {}", userId, username);
+        
         Date now = new Date();
         Date expireDate = new Date(now.getTime() + expire * 1000);
-
-        return JWT.create()
+        
+        String token = JWT.create()
                 .withClaim("userId", userId)
                 .withClaim("username", username)
                 .withIssuedAt(now)
                 .withExpiresAt(expireDate)
                 .sign(Algorithm.HMAC256(secret));
+        
+        log.info("JWT令牌生成成功，长度: {}", token.length());
+        return token;
     }
 
     /**
@@ -64,9 +71,18 @@ public class JwtUtil {
      * @return 解析后的JWT
      */
     public static DecodedJWT parseToken(String token) {
+        if (token == null) {
+            log.error("JWT解析失败：token为null");
+            return null;
+        }
+        
+        log.info("开始解析JWT令牌，token长度: {}", token.length());
+        
         try {
             JWTVerifier verifier = JWT.require(Algorithm.HMAC256(secret)).build();
-            return verifier.verify(token);
+            DecodedJWT jwt = verifier.verify(token);
+            log.info("JWT解析成功");
+            return jwt;
         } catch (JWTVerificationException e) {
             log.error("JWT解析失败：{}", e.getMessage());
             return null;
@@ -81,7 +97,9 @@ public class JwtUtil {
      */
     public static Long getUserId(String token) {
         DecodedJWT jwt = parseToken(token);
-        return jwt == null ? null : jwt.getClaim("userId").asLong();
+        Long userId = jwt == null ? null : jwt.getClaim("userId").asLong();
+        log.info("从JWT中获取userId: {}", userId);
+        return userId;
     }
 
     /**
@@ -92,7 +110,9 @@ public class JwtUtil {
      */
     public static String getUsername(String token) {
         DecodedJWT jwt = parseToken(token);
-        return jwt == null ? null : jwt.getClaim("username").asString();
+        String username = jwt == null ? null : jwt.getClaim("username").asString();
+        log.info("从JWT中获取username: {}", username);
+        return username;
     }
 
     /**
@@ -102,6 +122,14 @@ public class JwtUtil {
      * @return 是否有效
      */
     public static boolean verify(String token) {
-        return parseToken(token) != null;
+        if (token == null) {
+            log.error("JWT验证失败：token为null");
+            return false;
+        }
+        
+        log.info("开始验证JWT令牌，token长度: {}", token.length());
+        boolean result = parseToken(token) != null;
+        log.info("JWT验证结果: {}", result);
+        return result;
     }
 } 
