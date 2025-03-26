@@ -9,8 +9,12 @@ import com.wallpaper.management.entity.SysUser;
 import com.wallpaper.management.exception.BusinessException;
 import com.wallpaper.management.mapper.SysUserMapper;
 import com.wallpaper.management.service.SysUserService;
+import com.wallpaper.management.utils.JwtUtil;
+import com.wallpaper.management.vo.LoginResultVO;
 import lombok.RequiredArgsConstructor;
+import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.crypto.hash.Md5Hash;
+import org.apache.shiro.subject.Subject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -47,10 +51,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      *
      * @param username 用户名
      * @param password 密码
-     * @return JWT令牌
+     * @return 登录结果
      */
     @Override
-    public String login(String username, String password) {
+    public LoginResultVO login(String username, String password) {
         // 查询用户
         SysUser user = getByUsername(username);
         if (user == null) {
@@ -64,7 +68,25 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
 
         // 生成JWT令牌
-        return generateToken(user);
+        String token = generateToken(user);
+        
+        // 返回登录结果
+        SysUser userInfo = new SysUser();
+        userInfo.setId(user.getId());
+        userInfo.setUsername(user.getUsername());
+        userInfo.setNickname(user.getNickname());
+        userInfo.setAvatar(user.getAvatar());
+        userInfo.setEmail(user.getEmail());
+        userInfo.setPhone(user.getPhone());
+        userInfo.setStatus(user.getStatus());
+        userInfo.setCreateTime(user.getCreateTime());
+        // 密码不返回给前端
+        userInfo.setPassword(null);
+        
+        return LoginResultVO.builder()
+                .token(token)
+                .userInfo(userInfo)
+                .build();
     }
 
     /**
@@ -114,6 +136,40 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setPassword(encryptPassword(newPassword));
 
         return updateById(user);
+    }
+    
+    /**
+     * 获取当前登录用户
+     *
+     * @return 当前用户信息
+     */
+    @Override
+    public SysUser getCurrentUser() {
+        Subject subject = SecurityUtils.getSubject();
+        String token = (String) subject.getPrincipal();
+        if (token == null) {
+            throw new BusinessException(ResultCode.NOT_LOGIN);
+        }
+        
+        Long userId = JwtUtil.getUserId(token);
+        if (userId == null) {
+            throw new BusinessException(ResultCode.TOKEN_INVALID);
+        }
+        
+        return getById(userId);
+    }
+    
+    /**
+     * 修改当前用户密码
+     *
+     * @param oldPassword 旧密码
+     * @param newPassword 新密码
+     * @return 是否成功
+     */
+    @Override
+    public boolean updateCurrentUserPassword(String oldPassword, String newPassword) {
+        SysUser currentUser = getCurrentUser();
+        return updatePassword(currentUser.getId(), oldPassword, newPassword);
     }
 
     /**

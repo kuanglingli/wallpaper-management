@@ -3,6 +3,7 @@ package com.wallpaper.management.controller;
 import com.wallpaper.management.common.Result;
 import com.wallpaper.management.entity.SysUser;
 import com.wallpaper.management.service.SysUserService;
+import com.wallpaper.management.vo.LoginResultVO;
 import com.wallpaper.management.vo.LoginVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,9 +37,9 @@ public class SysUserController {
      */
     @Operation(summary = "用户登录")
     @PostMapping("/login")
-    public Result<String> login(@RequestBody @Valid LoginVO loginVO) {
-        String token = sysUserService.login(loginVO.getUsername(), loginVO.getPassword());
-        return Result.success(token, "登录成功");
+    public Result<LoginResultVO> login(@RequestBody @Valid LoginVO loginVO) {
+        LoginResultVO loginResult = sysUserService.login(loginVO.getUsername(), loginVO.getPassword());
+        return Result.success(loginResult, "登录成功");
     }
 
     /**
@@ -57,14 +58,13 @@ public class SysUserController {
     /**
      * 获取当前用户信息
      *
-     * @param userId 用户ID
      * @return 结果
      */
     @Operation(summary = "获取当前用户信息")
     @GetMapping("/info")
     @RequiresAuthentication
-    public Result<SysUser> info(@Parameter(description = "用户ID", required = true) @RequestParam Long userId) {
-        SysUser user = sysUserService.getById(userId);
+    public Result<SysUser> info() {
+        SysUser user = sysUserService.getCurrentUser();
         // 安全起见，将密码置空
         if (user != null) {
             user.setPassword(null);
@@ -75,7 +75,6 @@ public class SysUserController {
     /**
      * 修改密码
      *
-     * @param userId      用户ID
      * @param oldPassword 旧密码
      * @param newPassword 新密码
      * @return 结果
@@ -84,10 +83,9 @@ public class SysUserController {
     @PostMapping("/updatePassword")
     @RequiresAuthentication
     public Result<Boolean> updatePassword(
-            @Parameter(description = "用户ID", required = true) @RequestParam Long userId,
             @Parameter(description = "旧密码", required = true) @RequestParam @NotBlank(message = "旧密码不能为空") String oldPassword,
             @Parameter(description = "新密码", required = true) @RequestParam @NotBlank(message = "新密码不能为空") String newPassword) {
-        boolean result = sysUserService.updatePassword(userId, oldPassword, newPassword);
+        boolean result = sysUserService.updateCurrentUserPassword(oldPassword, newPassword);
         return Result.success(result, "密码修改成功");
     }
 

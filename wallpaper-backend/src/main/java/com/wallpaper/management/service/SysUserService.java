@@ -2,6 +2,7 @@ package com.wallpaper.management.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.wallpaper.management.entity.SysUser;
+import com.wallpaper.management.vo.LoginResultVO;
 
 /**
  * 用户服务接口
@@ -21,9 +22,9 @@ public interface SysUserService extends IService<SysUser> {
      *
      * @param username 用户名
      * @param password 密码
-     * @return JWT令牌
+     * @return 登录结果
      */
-    String login(String username, String password);
+    LoginResultVO login(String username, String password);
 
     /**
      * 用户注册
@@ -42,4 +43,20 @@ public interface SysUserService extends IService<SysUser> {
      * @return 是否成功
      */
     boolean updatePassword(Long userId, String oldPassword, String newPassword);
+    
+    /**
+     * 获取当前登录用户
+     *
+     * @return 当前用户信息
+     */
+    SysUser getCurrentUser();
+    
+    /**
+     * 修改当前用户密码
+     *
+     * @param oldPassword 旧密码
+     * @param newPassword 新密码
+     * @return 是否成功
+     */
+    boolean updateCurrentUserPassword(String oldPassword, String newPassword);
 } 

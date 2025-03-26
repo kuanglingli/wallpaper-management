@@ -56,6 +56,16 @@ public enum ResultCode {
     CAPTCHA_ERROR(4004, "验证码错误"),
 
     /**
+     * 未登录
+     */
+    NOT_LOGIN(4005, "用户未登录"),
+
+    /**
+     * 令牌无效
+     */
+    TOKEN_INVALID(4006, "令牌无效或已过期"),
+
+    /**
      * 文件上传失败
      */
     FILE_UPLOAD_ERROR(5001, "文件上传失败"),
