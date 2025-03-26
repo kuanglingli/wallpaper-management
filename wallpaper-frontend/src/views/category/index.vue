@@ -8,7 +8,7 @@
 
     <el-table
       v-loading="loading"
-      :data="categories"
+      :data="categoryList"
       style="width: 100%"
       border
     >
@@ -28,6 +28,19 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 分页 -->
+    <div class="pagination">
+      <el-pagination
+        v-model:current-page="pagination.pageNum"
+        v-model:page-size="pagination.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
 
     <!-- 添加/编辑对话框 -->
     <el-dialog
@@ -55,7 +68,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">
+          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
             确定
           </el-button>
         </span>
@@ -65,38 +78,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
-import type { FormInstance } from 'element-plus'
+import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
+import { 
+  getCategoryList, 
+  addCategory, 
+  updateCategory, 
+  deleteCategory 
+} from '@/api/category'
+import type { Category, PaginationParams } from '@/types'
 
-// 表格数据
+// 表单引用
+const formRef = ref<FormInstance>()
+
+// 分页
+const pagination = reactive<PaginationParams>({
+  pageNum: 1,
+  pageSize: 10
+})
+
+// 状态
 const loading = ref(false)
-const categories = ref([
-  {
-    id: 1,
-    name: '风景',
-    description: '自然风景壁纸',
-    wallpaperCount: 100,
-    createTime: '2024-03-25 10:00:00'
-  },
-  {
-    id: 2,
-    name: '动漫',
-    description: '动漫壁纸',
-    wallpaperCount: 80,
-    createTime: '2024-03-25 09:30:00'
-  }
-])
+const submitLoading = ref(false)
+const total = ref(0)
+const categoryList = ref<Category[]>([])
 
-// 对话框
+// 对话框状态
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
-const formRef = ref<FormInstance>()
-const form = reactive({
+const form = reactive<Partial<Category>>({
   name: '',
   description: ''
 })
 
+// 表单验证规则
 const rules = {
   name: [
     { required: true, message: '请输入分类名称', trigger: 'blur' }
@@ -106,31 +122,108 @@ const rules = {
   ]
 }
 
-// 方法
+// 初始化
+onMounted(() => {
+  fetchCategories()
+})
+
+// 获取分类列表
+const fetchCategories = async () => {
+  loading.value = true
+  try {
+    const res = await getCategoryList(pagination)
+    categoryList.value = res.data.list
+    total.value = res.data.total
+  } catch (error) {
+    console.error('获取分类列表失败:', error)
+    ElMessage.error('获取分类列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 添加分类
 const handleAdd = () => {
   dialogType.value = 'add'
   dialogVisible.value = true
-  form.name = ''
-  form.description = ''
+  Object.assign(form, {
+    id: undefined,
+    name: '',
+    description: ''
+  })
 }
 
-const handleEdit = (row: any) => {
+// 编辑分类
+const handleEdit = (row: Category) => {
   dialogType.value = 'edit'
   dialogVisible.value = true
-  Object.assign(form, row)
+  
+  Object.assign(form, {
+    id: row.id,
+    name: row.name,
+    description: row.description
+  })
 }
 
-const handleDelete = (row: any) => {
-  // TODO: 实现删除逻辑
+// 删除分类
+const handleDelete = (row: Category) => {
+  ElMessageBox.confirm(
+    `确认要删除分类 "${row.name}" 吗？`,
+    '删除确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      await deleteCategory(row.id)
+      ElMessage.success('删除成功')
+      fetchCategories()
+    } catch (error) {
+      console.error('删除分类失败:', error)
+      ElMessage.error('删除分类失败')
+    }
+  }).catch(() => {
+    // 用户取消删除，不做处理
+  })
 }
 
+// 分页变化
+const handleSizeChange = (val: number) => {
+  pagination.pageSize = val
+  fetchCategories()
+}
+
+const handleCurrentChange = (val: number) => {
+  pagination.pageNum = val
+  fetchCategories()
+}
+
+// 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
   
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      // TODO: 实现提交逻辑
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    submitLoading.value = true
+    try {
+      if (dialogType.value === 'add') {
+        await addCategory(form)
+        ElMessage.success('添加成功')
+      } else {
+        await updateCategory(form)
+        ElMessage.success('更新成功')
+      }
+      
       dialogVisible.value = false
+      fetchCategories()
+    } catch (error) {
+      console.error('保存分类失败:', error)
+      ElMessage.error('保存分类失败')
+    } finally {
+      submitLoading.value = false
     }
   })
 }
@@ -143,5 +236,11 @@ const handleSubmit = async () => {
 
 .toolbar {
   margin-bottom: 20px;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style> 
