@@ -82,28 +82,53 @@ const handleLogin = async () => {
       try {
         const res = await login(loginForm)
         
-        // 调试输出
-        console.log('登录响应数据:', res)
+        // 调试输出完整响应
+        console.log('完整登录响应:', JSON.stringify(res))
         
-        // 检查响应数据结构
-        if (!res || !res.data) {
-          console.error('登录响应缺少数据:', res)
-          ElMessage.error('登录响应数据格式异常，请检查后端返回')
-          return
+        // 尝试检查不同位置的token
+        console.log('res.token:', res.token)
+        console.log('res.data?.token:', res.data?.token)
+        
+        let token = null
+        let userInfo = null
+        
+        // 检查token可能存在的位置
+        if (res.token) {
+          // token直接在响应根级别
+          token = res.token
+          userInfo = res.userInfo
+          console.log('找到根级别的token')
+        } else if (res.data && res.data.token) {
+          // token在data字段中
+          token = res.data.token
+          userInfo = res.data.userInfo
+          console.log('找到data中的token')
+        } else if (typeof res === 'string') {
+          // 如果响应直接是字符串token
+          token = res
+          console.log('响应直接是字符串token')
         }
         
-        const { token, userInfo } = res.data
-        console.log('解析出的token:', token)
-        console.log('解析出的userInfo:', userInfo)
-        
         if (!token) {
-          console.error('登录响应中没有token:', res.data)
+          console.error('无法从响应中提取token:', res)
           ElMessage.error('登录响应中缺少token，请检查后端返回')
           return
         }
         
-        // 保存token到本地存储
+        console.log('最终提取的token:', token)
+        
+        // 确保token不是"undefined"字符串
+        if (token === 'undefined' || token === undefined) {
+          console.error('提取的token无效:', token)
+          ElMessage.error('获取到的token无效')
+          return
+        }
+        
+        // 保存token到本地存储并立即验证
         localStorage.setItem('token', token)
+        const storedToken = localStorage.getItem('token')
+        console.log('存储后立即读取的token:', storedToken)
+        
         // 保存用户信息
         if (userInfo) {
           localStorage.setItem('userInfo', JSON.stringify(userInfo))

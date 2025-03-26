@@ -10,10 +10,13 @@ import com.wallpaper.management.exception.BusinessException;
 import com.wallpaper.management.mapper.SysUserMapper;
 import com.wallpaper.management.service.SysUserService;
 import com.wallpaper.management.utils.JwtUtil;
+import com.wallpaper.management.utils.ShiroUtil;
 import com.wallpaper.management.vo.LoginResultVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.crypto.hash.Md5Hash;
+import org.apache.shiro.crypto.hash.SimpleHash;
 import org.apache.shiro.subject.Subject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ import java.util.Date;
 /**
  * 用户服务实现类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
@@ -32,6 +36,21 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Value("${jwt.expire}")
     private long jwtExpire;
+
+    /**
+     * 盐值
+     */
+    private static final String SALT = "wallpaper";
+
+    /**
+     * 加密算法
+     */
+    private static final String ALGORITHM_NAME = "md5";
+
+    /**
+     * 加密次数
+     */
+    private static final int HASH_ITERATIONS = 2;
 
     /**
      * 根据用户名查询用户
@@ -55,38 +74,46 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public LoginResultVO login(String username, String password) {
-        // 查询用户
+        log.info("用户登录 - username: {}", username);
+        
+        // 根据用户名查询用户
         SysUser user = getByUsername(username);
         if (user == null) {
-            throw new BusinessException(ResultCode.USER_NOT_EXIST);
+            log.warn("用户不存在: {}", username);
+            throw new BusinessException("用户不存在");
+        }
+
+        // 校验用户状态
+        if (user.getStatus() == 0) {
+            log.warn("用户已被禁用: {}", username);
+            throw new BusinessException("用户已被禁用");
         }
 
         // 校验密码
         String encryptedPassword = encryptPassword(password);
-        if (!user.getPassword().equals(encryptedPassword)) {
-            throw new BusinessException(ResultCode.LOGIN_ERROR);
+        if (!encryptedPassword.equals(user.getPassword())) {
+            log.warn("密码错误 - username: {}", username);
+            throw new BusinessException("密码错误");
         }
 
-        // 生成JWT令牌
-        String token = generateToken(user);
+        // 生成token
+        String token = JwtUtil.generateToken(user.getId(), user.getUsername());
+        log.info("生成token成功 - username: {}, tokenLength: {}", username, token != null ? token.length() : 0);
         
+        if (token == null || token.isEmpty()) {
+            log.error("生成token失败，为空值 - username: {}", username);
+            throw new BusinessException("生成token失败");
+        }
+
         // 返回登录结果
-        SysUser userInfo = new SysUser();
-        userInfo.setId(user.getId());
-        userInfo.setUsername(user.getUsername());
-        userInfo.setNickname(user.getNickname());
-        userInfo.setAvatar(user.getAvatar());
-        userInfo.setEmail(user.getEmail());
-        userInfo.setPhone(user.getPhone());
-        userInfo.setStatus(user.getStatus());
-        userInfo.setCreateTime(user.getCreateTime());
-        // 密码不返回给前端
-        userInfo.setPassword(null);
+        LoginResultVO loginResult = new LoginResultVO();
+        loginResult.setToken(token);
+        // 安全起见，将密码置空
+        user.setPassword(null);
+        loginResult.setUserInfo(user);
         
-        return LoginResultVO.builder()
-                .token(token)
-                .userInfo(userInfo)
-                .build();
+        log.info("用户登录成功 - username: {}, token: {}", username, token);
+        return loginResult;
     }
 
     /**
@@ -97,16 +124,19 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public boolean register(SysUser user) {
-        // 检查用户名是否已存在
-        SysUser existingUser = getByUsername(user.getUsername());
-        if (existingUser != null) {
-            throw new BusinessException(ResultCode.USER_EXIST);
+        // 校验用户名是否已存在
+        SysUser existUser = getByUsername(user.getUsername());
+        if (existUser != null) {
+            throw new BusinessException("用户名已存在");
         }
 
+        // 设置初始状态为正常
+        user.setStatus(1);
+        
         // 加密密码
         user.setPassword(encryptPassword(user.getPassword()));
-        user.setStatus(1);
-
+        
+        // 保存用户
         return save(user);
     }
 
@@ -145,17 +175,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public SysUser getCurrentUser() {
-        Subject subject = SecurityUtils.getSubject();
-        String token = (String) subject.getPrincipal();
-        if (token == null) {
-            throw new BusinessException(ResultCode.NOT_LOGIN);
-        }
-        
-        Long userId = JwtUtil.getUserId(token);
+        Long userId = ShiroUtil.getUserId();
         if (userId == null) {
-            throw new BusinessException(ResultCode.TOKEN_INVALID);
+            return null;
         }
-        
         return getById(userId);
     }
     
@@ -168,8 +191,24 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public boolean updateCurrentUserPassword(String oldPassword, String newPassword) {
-        SysUser currentUser = getCurrentUser();
-        return updatePassword(currentUser.getId(), oldPassword, newPassword);
+        // 获取当前用户
+        SysUser user = getCurrentUser();
+        if (user == null) {
+            throw new BusinessException("用户未登录");
+        }
+        
+        // 校验旧密码
+        String encryptedOldPassword = encryptPassword(oldPassword);
+        if (!encryptedOldPassword.equals(user.getPassword())) {
+            throw new BusinessException("旧密码错误");
+        }
+        
+        // 更新密码
+        SysUser updateUser = new SysUser();
+        updateUser.setId(user.getId());
+        updateUser.setPassword(encryptPassword(newPassword));
+        
+        return updateById(updateUser);
     }
 
     /**
@@ -197,6 +236,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * @return 加密后的密码
      */
     private String encryptPassword(String password) {
-        return new Md5Hash(password).toHex();
+        return new SimpleHash(ALGORITHM_NAME, password, SALT, HASH_ITERATIONS).toHex();
     }
 } 

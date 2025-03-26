@@ -5,7 +5,16 @@ import type { ApiResponse, LoginParams, LoginResult, UserInfo } from '../types'
  * 用户登录
  */
 export function login(data: LoginParams) {
-  return request.post<any, ApiResponse<LoginResult>>('/user/login', data)
+  console.log('发送登录请求:', data)
+  return request.post<any, any>('/user/login', data)
+    .then((response: any) => {
+      console.log('原始登录响应:', response)
+      return response
+    })
+    .catch((error: any) => {
+      console.error('登录请求错误:', error)
+      throw error
+    })
 }
 
 /**
