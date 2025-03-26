@@ -2,9 +2,12 @@ package com.wallpaper.management.config;
 
 import com.wallpaper.management.shiro.JwtFilter;
 import com.wallpaper.management.shiro.UserRealm;
+import org.apache.shiro.authc.pam.AtLeastOneSuccessfulStrategy;
+import org.apache.shiro.authc.pam.ModularRealmAuthenticator;
 import org.apache.shiro.mgt.DefaultSessionStorageEvaluator;
 import org.apache.shiro.mgt.DefaultSubjectDAO;
 import org.apache.shiro.mgt.SecurityManager;
+import org.apache.shiro.realm.Realm;
 import org.apache.shiro.spring.LifecycleBeanPostProcessor;
 import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
@@ -15,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.servlet.Filter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -59,15 +63,29 @@ public class ShiroConfig {
     }
 
     /**
+     * 配置Authenticator
+     *
+     * @return ModularRealmAuthenticator
+     */
+    @Bean
+    public ModularRealmAuthenticator authenticator() {
+        ModularRealmAuthenticator authenticator = new ModularRealmAuthenticator();
+        authenticator.setAuthenticationStrategy(new AtLeastOneSuccessfulStrategy());
+        return authenticator;
+    }
+
+    /**
      * 配置安全管理器
      *
      * @param userRealm 用户Realm
+     * @param authenticator 认证器
      * @return SecurityManager
      */
     @Bean
-    public SecurityManager securityManager(UserRealm userRealm) {
+    public SecurityManager securityManager(UserRealm userRealm, ModularRealmAuthenticator authenticator) {
         DefaultWebSecurityManager securityManager = new DefaultWebSecurityManager();
         securityManager.setRealm(userRealm);
+        securityManager.setAuthenticator(authenticator);
 
         // 禁用Session
         DefaultSubjectDAO subjectDAO = new DefaultSubjectDAO();
