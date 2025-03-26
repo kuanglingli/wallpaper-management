@@ -3,6 +3,7 @@ package com.wallpaper.management.controller;
 import com.wallpaper.management.common.Result;
 import com.wallpaper.management.entity.SysUser;
 import com.wallpaper.management.service.SysUserService;
+import com.wallpaper.management.vo.LoginVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,16 +31,13 @@ public class SysUserController {
     /**
      * 用户登录
      *
-     * @param username 用户名
-     * @param password 密码
+     * @param loginVO 登录信息
      * @return 结果
      */
     @Operation(summary = "用户登录")
     @PostMapping("/login")
-    public Result<String> login(
-            @Parameter(description = "用户名", required = true) @RequestParam @NotBlank(message = "用户名不能为空") String username,
-            @Parameter(description = "密码", required = true) @RequestParam @NotBlank(message = "密码不能为空") String password) {
-        String token = sysUserService.login(username, password);
+    public Result<String> login(@RequestBody @Valid LoginVO loginVO) {
+        String token = sysUserService.login(loginVO.getUsername(), loginVO.getPassword());
         return Result.success(token, "登录成功");
     }
 
