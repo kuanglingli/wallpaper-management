@@ -4,6 +4,7 @@ import com.wallpaper.management.shiro.JwtFilter;
 import com.wallpaper.management.shiro.UserRealm;
 import org.apache.shiro.authc.pam.AtLeastOneSuccessfulStrategy;
 import org.apache.shiro.authc.pam.ModularRealmAuthenticator;
+import org.apache.shiro.authz.ModularRealmAuthorizer;
 import org.apache.shiro.mgt.DefaultSessionStorageEvaluator;
 import org.apache.shiro.mgt.DefaultSubjectDAO;
 import org.apache.shiro.mgt.SecurityManager;
@@ -75,17 +76,29 @@ public class ShiroConfig {
     }
 
     /**
+     * 配置Authorizer
+     *
+     * @return ModularRealmAuthorizer
+     */
+    @Bean
+    public ModularRealmAuthorizer authorizer() {
+        return new ModularRealmAuthorizer();
+    }
+
+    /**
      * 配置安全管理器
      *
      * @param userRealm 用户Realm
      * @param authenticator 认证器
+     * @param authorizer 授权器
      * @return SecurityManager
      */
     @Bean
-    public SecurityManager securityManager(UserRealm userRealm, ModularRealmAuthenticator authenticator) {
+    public SecurityManager securityManager(UserRealm userRealm, ModularRealmAuthenticator authenticator, ModularRealmAuthorizer authorizer) {
         DefaultWebSecurityManager securityManager = new DefaultWebSecurityManager();
         securityManager.setRealm(userRealm);
         securityManager.setAuthenticator(authenticator);
+        securityManager.setAuthorizer(authorizer);
 
         // 禁用Session
         DefaultSubjectDAO subjectDAO = new DefaultSubjectDAO();
