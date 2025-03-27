@@ -48,7 +48,8 @@ export interface WallpaperQueryParams extends PaginationParams {
 // 类别相关类型
 export interface Category {
   id: number
-  name: string
+  name?: string           // 标记为可选，以便兼容两种命名方式
+  categoryName?: string   // 添加该字段以匹配后端可能返回的格式
   description?: string
   wallpaperCount?: number
   createTime?: string

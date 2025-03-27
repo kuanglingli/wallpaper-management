@@ -10,7 +10,7 @@
             <el-option
               v-for="item in categories"
               :key="item.id"
-              :label="item.name"
+              :label="item.name || item.categoryName"
               :value="item.id"
             />
           </el-select>
@@ -146,7 +146,7 @@
             <el-option
               v-for="item in categories"
               :key="item.id"
-              :label="item.name"
+              :label="item.name || item.categoryName"
               :value="item.id"
             />
           </el-select>
@@ -292,34 +292,58 @@ const fetchCategoriesAndTags = async () => {
   try {
     console.log('开始获取分类和标签数据');
     
-    // 使用Promise.all同时请求分类和标签数据
-    const [categoryRes, tagRes] = await Promise.all([
-      getAllCategories(),
-      getAllTags()
-    ]);
-    
-    console.log('获取到分类数据:', categoryRes);
-    console.log('获取到标签数据:', tagRes);
-    
-    // 确保分类数据正确填充
-    if (categoryRes?.data && Array.isArray(categoryRes.data)) {
-      categories.value = categoryRes.data;
-      console.log('分类数据已填充:', categories.value);
-    } else {
-      console.warn('分类数据结构不符合预期:', categoryRes);
+    // 分别获取分类和标签数据，避免一个失败影响另一个
+    console.log('开始获取分类数据...');
+    try {
+      const categoryRes = await getAllCategories();
+      console.log('分类数据获取成功:', categoryRes);
+      
+      // 确保分类数据正确填充
+      if (categoryRes?.data && Array.isArray(categoryRes.data)) {
+        console.log('分类数据是数组，长度:', categoryRes.data.length);
+        categories.value = categoryRes.data;
+        
+        // 检查分类数据内容
+        if (categories.value.length > 0) {
+          console.log('分类数据示例:', categories.value[0]);
+        }
+      } else {
+        console.warn('分类数据结构不符合预期:', categoryRes);
+        categories.value = [];
+      }
+    } catch (categoryError) {
+      console.error('获取分类数据失败:', categoryError);
       categories.value = [];
     }
     
-    // 确保标签数据正确填充
-    if (tagRes?.data && Array.isArray(tagRes.data)) {
-      tags.value = tagRes.data;
-      console.log('标签数据已填充:', tags.value);
-    } else {
-      console.warn('标签数据结构不符合预期:', tagRes);
+    console.log('开始获取标签数据...');
+    try {
+      const tagRes = await getAllTags();
+      console.log('标签数据获取成功:', tagRes);
+      
+      // 确保标签数据正确填充
+      if (tagRes?.data && Array.isArray(tagRes.data)) {
+        console.log('标签数据是数组，长度:', tagRes.data.length);
+        tags.value = tagRes.data;
+        
+        // 检查标签数据内容
+        if (tags.value.length > 0) {
+          console.log('标签数据示例:', tags.value[0]);
+        }
+      } else {
+        console.warn('标签数据结构不符合预期:', tagRes);
+        tags.value = [];
+      }
+    } catch (tagError) {
+      console.error('获取标签数据失败:', tagError);
       tags.value = [];
     }
+    
+    console.log('分类和标签数据处理完成');
+    console.log('分类数量:', categories.value.length);
+    console.log('标签数量:', tags.value.length);
   } catch (error) {
-    console.error('获取分类或标签失败:', error);
+    console.error('获取分类或标签总体失败:', error);
     ElMessage.error('获取分类或标签失败，请检查网络连接');
     // 设置为空数组以避免页面错误
     categories.value = [];
