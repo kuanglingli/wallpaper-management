@@ -2,20 +2,30 @@ package com.wallpaper.management.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.wallpaper.management.common.Result;
+import com.wallpaper.management.entity.WpTag;
 import com.wallpaper.management.entity.WpWallpaper;
+import com.wallpaper.management.service.WpCategoryService;
+import com.wallpaper.management.service.WpTagService;
 import com.wallpaper.management.service.WpWallpaperService;
+import com.wallpaper.management.service.WpWallpaperTagService;
+import com.wallpaper.management.util.ImageUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 壁纸控制器
@@ -28,6 +38,12 @@ import java.util.List;
 public class WpWallpaperController {
 
     private final WpWallpaperService wallpaperService;
+    private final WpCategoryService categoryService;
+    private final WpTagService tagService;
+    private final WpWallpaperTagService wallpaperTagService;
+    
+    @Value("${file.upload.base-url}")
+    private String baseUrl;
 
     /**
      * 分页查询壁纸列表
@@ -48,6 +64,10 @@ public class WpWallpaperController {
             @Parameter(description = "标签ID") @RequestParam(required = false) Long tagId,
             @Parameter(description = "关键词") @RequestParam(required = false) String keyword) {
         IPage<WpWallpaper> pageResult = wallpaperService.pageWallpapers(page, pageSize, categoryId, tagId, keyword);
+        
+        // 填充附加信息
+        enhanceWallpaperList(pageResult.getRecords());
+        
         return Result.success(pageResult);
     }
 
@@ -63,6 +83,11 @@ public class WpWallpaperController {
         // 增加浏览次数
         wallpaperService.incrementViews(id);
         WpWallpaper wallpaper = wallpaperService.getById(id);
+        
+        if (wallpaper != null) {
+            enhanceWallpaper(wallpaper);
+        }
+        
         return Result.success(wallpaper);
     }
 
@@ -198,5 +223,78 @@ public class WpWallpaperController {
             @Parameter(description = "数量限制", required = true) @RequestParam(defaultValue = "10") Integer limit) {
         List<WpWallpaper> hotWallpapers = wallpaperService.getHotWallpapers(limit);
         return Result.success(hotWallpapers);
+    }
+
+    /**
+     * 增强壁纸列表，添加URL和关联信息
+     *
+     * @param wallpapers 壁纸列表
+     */
+    private void enhanceWallpaperList(List<WpWallpaper> wallpapers) {
+        if (wallpapers == null || wallpapers.isEmpty()) {
+            return;
+        }
+
+        // 获取所有壁纸ID
+        List<Long> wallpaperIds = wallpapers.stream()
+                .map(WpWallpaper::getId)
+                .collect(Collectors.toList());
+        
+        // 批量获取分类信息
+        List<Long> categoryIds = wallpapers.stream()
+                .map(WpWallpaper::getCategoryId)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, String> categoryNameMap = categoryService.getCategoryNameMap(categoryIds);
+        
+        // 批量获取标签关联信息
+        Map<Long, List<Long>> wallpaperTagMap = new java.util.HashMap<>();
+        for (Long wallpaperId : wallpaperIds) {
+            List<Long> tagIdsForWallpaper = wallpaperTagService.getTagIdsByWallpaperId(wallpaperId);
+            wallpaperTagMap.put(wallpaperId, tagIdsForWallpaper);
+        }
+        
+        // 获取所有相关标签
+        List<Long> allTagIds = wallpaperTagMap.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, WpTag> tagMap = tagService.listByIds(allTagIds).stream()
+                .collect(Collectors.toMap(WpTag::getId, Function.identity()));
+        
+        // 填充壁纸信息
+        for (WpWallpaper wallpaper : wallpapers) {
+            // 设置URL
+            wallpaper.setImageUrl(ImageUtils.buildFullUrl(wallpaper.getFilePath(), baseUrl));
+            wallpaper.setThumbnailUrl(ImageUtils.buildFullUrl(wallpaper.getThumbnailPath(), baseUrl));
+            
+            // 设置分类名称
+            if (categoryNameMap.containsKey(wallpaper.getCategoryId())) {
+                wallpaper.setCategoryName(categoryNameMap.get(wallpaper.getCategoryId()));
+            }
+            
+            // 设置标签列表
+            List<Long> tagIds = wallpaperTagMap.getOrDefault(wallpaper.getId(), new ArrayList<>());
+            List<WpTag> tags = tagIds.stream()
+                    .map(tagMap::get)
+                    .filter(tag -> tag != null)
+                    .collect(Collectors.toList());
+            wallpaper.setTags(tags);
+        }
+    }
+    
+    /**
+     * 增强单个壁纸，添加URL和关联信息
+     *
+     * @param wallpaper 壁纸
+     */
+    private void enhanceWallpaper(WpWallpaper wallpaper) {
+        if (wallpaper == null) {
+            return;
+        }
+        
+        List<WpWallpaper> list = new ArrayList<>();
+        list.add(wallpaper);
+        enhanceWallpaperList(list);
     }
 } 

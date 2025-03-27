@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.wallpaper.management.entity.WpCategory;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 壁纸分类服务接口
@@ -41,4 +42,12 @@ public interface WpCategoryService extends IService<WpCategory> {
      * @return 是否成功
      */
     boolean updateStatus(Long id, Integer status);
+
+    /**
+     * 获取分类ID到名称的映射
+     *
+     * @param categoryIds 分类ID列表
+     * @return 分类ID到名称的映射
+     */
+    Map<Long, String> getCategoryNameMap(List<Long> categoryIds);
 } 

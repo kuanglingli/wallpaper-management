@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -65,23 +66,18 @@ public class WpCategoryServiceImpl extends ServiceImpl<WpCategoryMapper, WpCateg
     /**
      * 获取指定父级分类下的所有子分类ID列表（包括子分类的子分类）
      *
-     * @param parentId 父级分类ID
+     * @param categoryId 父级分类ID
      * @return 子分类ID列表
      */
     @Override
-    public List<Long> getAllChildrenIds(Long parentId) {
-        List<Long> result = new ArrayList<>();
-        
-        // 获取直接子分类
-        List<WpCategory> children = getChildrenByParentId(parentId);
-        
-        // 递归获取子分类的子分类
-        for (WpCategory child : children) {
-            result.add(child.getId());
-            result.addAll(getAllChildrenIds(child.getId()));
+    public List<Long> getAllChildrenIds(Long categoryId) {
+        if (categoryId == null) {
+            return Collections.emptyList();
         }
         
-        return result;
+        List<Long> childIds = new ArrayList<>();
+        findAllChildren(categoryId, childIds);
+        return childIds;
     }
 
     /**
@@ -111,5 +107,25 @@ public class WpCategoryServiceImpl extends ServiceImpl<WpCategoryMapper, WpCateg
             children.forEach(child -> setChildren(child, categoryMap));
             parent.setChildren(children);
         }
+    }
+
+    @Override
+    public Map<Long, String> getCategoryNameMap(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        
+        List<WpCategory> categories = listByIds(categoryIds);
+        return categories.stream()
+                .collect(Collectors.toMap(
+                        WpCategory::getId,
+                        category -> {
+                            // 返回分类名称，优先使用name字段
+                            return StrUtil.isNotBlank(category.getName()) ? 
+                                    category.getName() : 
+                                    category.getCategoryName();
+                        },
+                        (a, b) -> a // 如果有重复键，保留第一个值
+                ));
     }
 } 

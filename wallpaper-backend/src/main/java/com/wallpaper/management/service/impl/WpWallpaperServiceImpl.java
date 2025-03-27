@@ -13,10 +13,14 @@ import com.wallpaper.management.exception.BusinessException;
 import com.wallpaper.management.mapper.WpWallpaperMapper;
 import com.wallpaper.management.service.WpCategoryService;
 import com.wallpaper.management.service.WpWallpaperService;
+import com.wallpaper.management.service.WpWallpaperTagService;
+import com.wallpaper.management.util.ImageUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -32,11 +36,13 @@ import java.util.List;
 /**
  * 壁纸服务实现类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWallpaper> implements WpWallpaperService {
 
     private final WpCategoryService categoryService;
+    private final WpWallpaperTagService wallpaperTagService;
 
     @Value("${file.upload.path}")
     private String uploadPath;
@@ -46,6 +52,15 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
 
     @Value("${file.upload.max-size}")
     private long maxSize;
+    
+    @Value("${file.upload.base-url}")
+    private String baseUrl;
+    
+    @Value("${file.upload.thumbnail.width}")
+    private int thumbnailWidth;
+    
+    @Value("${file.upload.thumbnail.height}")
+    private int thumbnailHeight;
 
     /**
      * 上传壁纸
@@ -100,9 +115,16 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
             int height = image.getHeight();
             long fileSize = file.getSize();
 
+            // 生成缩略图
+            String thumbnailPath = ImageUtils.generateThumbnail(relativePath, uploadPath, thumbnailWidth, thumbnailHeight);
+            if (StrUtil.isBlank(thumbnailPath)) {
+                log.warn("缩略图生成失败，使用原图路径");
+                thumbnailPath = relativePath;
+            }
+
             // 设置壁纸信息
             wallpaper.setFilePath(relativePath);
-            wallpaper.setThumbnailPath(relativePath); // 简化版，实际应该生成缩略图
+            wallpaper.setThumbnailPath(thumbnailPath);
             wallpaper.setFileSize(fileSize);
             wallpaper.setWidth(width);
             wallpaper.setHeight(height);
@@ -116,7 +138,18 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
             // 保存壁纸信息
             save(wallpaper);
 
-            // TODO: 处理标签关联，需要另外实现标签关联服务
+            // 处理标签关联
+            if (!CollectionUtils.isEmpty(tagIds)) {
+                wallpaperTagService.saveWallpaperTags(wallpaper.getId(), tagIds);
+            }
+            
+            // 构建URL，用于前端访问
+            String imageUrl = ImageUtils.buildFullUrl(relativePath, baseUrl);
+            String thumbnailUrl = ImageUtils.buildFullUrl(thumbnailPath, baseUrl);
+            
+            // 设置URL（不保存到数据库，只用于返回给前端）
+            wallpaper.setImageUrl(imageUrl);
+            wallpaper.setThumbnailUrl(thumbnailUrl);
 
             return wallpaper;
         } catch (IOException e) {
@@ -151,7 +184,14 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
 
         // 标签条件
         if (tagId != null) {
-            // TODO: 查询标签关联，需要另外实现
+            // 查询含有该标签的壁纸ID列表
+            List<Long> wallpaperIds = wallpaperTagService.getWallpaperIdsByTagId(tagId);
+            if (!CollectionUtils.isEmpty(wallpaperIds)) {
+                queryWrapper.in(WpWallpaper::getId, wallpaperIds);
+            } else {
+                // 如果没有找到匹配的壁纸，返回空结果
+                return new Page<>(page, pageSize);
+            }
         }
 
         // 关键词条件

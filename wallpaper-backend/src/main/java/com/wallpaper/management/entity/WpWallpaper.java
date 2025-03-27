@@ -1,8 +1,11 @@
 package com.wallpaper.management.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.util.List;
 
 /**
  * 壁纸实体类
@@ -83,4 +86,28 @@ public class WpWallpaper extends BaseEntity {
      * 上传用户ID
      */
     private Long uploaderUserId;
+    
+    /**
+     * 图片URL (不映射数据库字段)
+     */
+    @TableField(exist = false)
+    private String imageUrl;
+    
+    /**
+     * 缩略图URL (不映射数据库字段)
+     */
+    @TableField(exist = false)
+    private String thumbnailUrl;
+    
+    /**
+     * 分类名称 (不映射数据库字段)
+     */
+    @TableField(exist = false)
+    private String categoryName;
+    
+    /**
+     * 标签列表 (不映射数据库字段)
+     */
+    @TableField(exist = false)
+    private List<WpTag> tags;
 } 
