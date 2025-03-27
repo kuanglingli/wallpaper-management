@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onBeforeMount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
@@ -72,6 +72,21 @@ const loginRules = {
     { required: true, message: '请输入密码', trigger: 'blur' }
   ]
 }
+
+// 进入页面前检查是否是被拦截重定向的
+onBeforeMount(() => {
+  const redirectPath = route.query.redirect as string
+  if (redirectPath) {
+    ElMessage.info('请先登录以继续访问')
+  }
+  
+  // 清除本地存储中可能存在的无效token
+  const token = localStorage.getItem('token')
+  if (token === 'undefined' || token === 'null') {
+    localStorage.removeItem('token')
+    localStorage.removeItem('userInfo')
+  }
+})
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
@@ -118,9 +133,16 @@ const handleLogin = async () => {
         console.log('最终提取的token:', token)
         
         // 确保token不是"undefined"字符串
-        if (token === 'undefined' || token === undefined) {
+        if (token === 'undefined' || token === undefined || token === 'null' || token === null) {
           console.error('提取的token无效:', token)
-          ElMessage.error('获取到的token无效')
+          ElMessage.error('获取到的token无效，请联系管理员')
+          return
+        }
+        
+        // 简单验证token格式是否符合JWT标准（三段式，使用.分隔）
+        if (!token.includes('.') || token.split('.').length !== 3) {
+          console.error('Token格式不符合JWT标准:', token)
+          ElMessage.error('获取到的token格式不正确，请联系管理员')
           return
         }
         
@@ -141,7 +163,23 @@ const handleLogin = async () => {
         router.push(redirect || '/home')
       } catch (error: any) {
         console.error('登录失败:', error)
-        ElMessage.error(error.message || '登录失败，请检查用户名和密码')
+        // 针对不同类型的错误提供更友好的提示
+        if (error.response) {
+          const { status } = error.response
+          if (status === 401) {
+            ElMessage.error('用户名或密码错误')
+          } else if (status === 403) {
+            ElMessage.error('账号已被禁用，请联系管理员')
+          } else if (status === 500) {
+            ElMessage.error('服务器内部错误，请稍后再试')
+          } else {
+            ElMessage.error(error.message || '登录失败，请检查用户名和密码')
+          }
+        } else if (error.message && error.message.includes('网络')) {
+          ElMessage.error('网络连接失败，请检查网络设置')
+        } else {
+          ElMessage.error(error.message || '登录失败，请稍后再试')
+        }
       } finally {
         loading.value = false
       }

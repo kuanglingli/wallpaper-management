@@ -8,6 +8,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authc.AuthenticationToken;
+import org.apache.shiro.authc.IncorrectCredentialsException;
+import org.apache.shiro.authc.LockedAccountException;
+import org.apache.shiro.authc.UnknownAccountException;
+import org.apache.shiro.authc.expired.ExpiredCredentialsException;
 import org.apache.shiro.web.filter.authc.AuthenticatingFilter;
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -71,14 +75,16 @@ public class JwtFilter extends AuthenticatingFilter {
         String token = getRequestToken((HttpServletRequest) request);
         if (StrUtil.isBlank(token)) {
             // 无Token，返回未授权
-            responseError(response, ResultCode.UNAUTHORIZED);
+            log.warn("请求未携带Token，拒绝访问");
+            responseError(response, ResultCode.UNAUTHORIZED, "请先登录");
             return false;
         }
 
         // 验证Token是否有效
         if (!JwtUtil.verify(token)) {
             // Token无效，返回未授权
-            responseError(response, ResultCode.UNAUTHORIZED);
+            log.warn("Token验证失败，可能已过期");
+            responseError(response, ResultCode.UNAUTHORIZED, "登录已过期，请重新登录");
             return false;
         }
 
@@ -97,8 +103,24 @@ public class JwtFilter extends AuthenticatingFilter {
      */
     @Override
     protected boolean onLoginFailure(AuthenticationToken token, AuthenticationException e, ServletRequest request, ServletResponse response) {
+        log.error("登录失败", e);
+        String errorMessage = "登录验证失败";
+        
+        // 根据异常类型返回不同的错误信息
+        if (e instanceof UnknownAccountException) {
+            errorMessage = "用户不存在";
+        } else if (e instanceof LockedAccountException) {
+            errorMessage = "用户已被禁用";
+        } else if (e instanceof IncorrectCredentialsException) {
+            errorMessage = "密码错误";
+        } else if (e instanceof ExpiredCredentialsException) {
+            errorMessage = "凭证已过期，请重新登录";
+        } else if (e.getMessage() != null) {
+            errorMessage = e.getMessage();
+        }
+        
         // 登录失败，返回未授权
-        responseError(response, ResultCode.UNAUTHORIZED);
+        responseError(response, ResultCode.UNAUTHORIZED, errorMessage);
         return false;
     }
 
@@ -132,17 +154,28 @@ public class JwtFilter extends AuthenticatingFilter {
      *
      * @param response   响应
      * @param resultCode 错误码
+     * @param message    错误信息
      */
-    private void responseError(ServletResponse response, ResultCode resultCode) {
+    private void responseError(ServletResponse response, ResultCode resultCode, String message) {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         httpResponse.setContentType("application/json;charset=utf-8");
         httpResponse.setStatus(200);
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            String json = objectMapper.writeValueAsString(Result.error(resultCode));
+            String json = objectMapper.writeValueAsString(Result.error(resultCode.getCode(), message));
             httpResponse.getWriter().print(json);
         } catch (IOException e) {
             log.error("返回错误响应失败", e);
         }
+    }
+
+    /**
+     * 返回错误响应
+     *
+     * @param response   响应
+     * @param resultCode 错误码
+     */
+    private void responseError(ServletResponse response, ResultCode resultCode) {
+        responseError(response, resultCode, resultCode.getMessage());
     }
 } 

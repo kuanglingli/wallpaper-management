@@ -98,30 +98,34 @@ public class Result<T> implements Serializable {
     }
 
     /**
-     * 失败返回结果
+     * 返回错误结果
      *
-     * @param code    错误码
+     * @param code    状态码
      * @param message 错误信息
-     * @param <T>     泛型参数
-     * @return 返回结果
+     * @return 响应结果
      */
-    public static <T> Result<T> error(Integer code, String message) {
-        Result<T> result = new Result<>();
-        result.setCode(code);
-        result.setMessage(message);
-        result.setData(null);
-        result.setSuccess(false);
-        return result;
+    public static <T> Result<T> error(int code, String message) {
+        return new Result<>(code, message, null);
     }
 
     /**
-     * 失败返回结果
+     * 返回错误结果
      *
-     * @param resultCode 错误码枚举
-     * @param <T>        泛型参数
-     * @return 返回结果
+     * @param resultCode 错误码
+     * @return 响应结果
      */
     public static <T> Result<T> error(ResultCode resultCode) {
         return error(resultCode.getCode(), resultCode.getMessage());
+    }
+
+    /**
+     * 返回错误结果
+     *
+     * @param resultCode 错误码
+     * @param message    自定义错误信息
+     * @return 响应结果
+     */
+    public static <T> Result<T> error(ResultCode resultCode, String message) {
+        return error(resultCode.getCode(), message);
     }
 } 
