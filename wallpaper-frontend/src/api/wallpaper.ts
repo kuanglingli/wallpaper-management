@@ -5,7 +5,8 @@ import type { ApiResponse, Wallpaper, WallpaperQueryParams, PageResult } from '.
  * 获取壁纸列表
  */
 export function getWallpaperList(params: WallpaperQueryParams) {
-  return request.get<any, ApiResponse<PageResult<Wallpaper>>>('/wallpaper/list', { params })
+  console.log('请求壁纸列表，参数:', params)
+  return request.get<any, ApiResponse<PageResult<Wallpaper>>>('/wallpaper/page', { params })
 }
 
 /**
@@ -51,4 +52,18 @@ export function uploadWallpaperImage(file: File) {
       }
     }
   )
+}
+
+/**
+ * 获取最新壁纸
+ */
+export function getLatestWallpapers(limit: number = 5) {
+  return request.get<any, ApiResponse<Wallpaper[]>>('/wallpaper/latest', { params: { limit }})
+}
+
+/**
+ * 获取热门壁纸
+ */
+export function getHotWallpapers(limit: number = 5) {
+  return request.get<any, ApiResponse<Wallpaper[]>>('/wallpaper/hot', { params: { limit }})
 } 

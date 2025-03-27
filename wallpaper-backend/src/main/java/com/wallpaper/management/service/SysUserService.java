@@ -59,4 +59,9 @@ public interface SysUserService extends IService<SysUser> {
      * @return 是否成功
      */
     boolean updateCurrentUserPassword(String oldPassword, String newPassword);
+    
+    /**
+     * 用户登出
+     */
+    void logout();
 } 

@@ -125,4 +125,17 @@ public class SysUserController {
         boolean result = sysUserService.updateById(user);
         return Result.success(result, "状态更新成功");
     }
+
+    /**
+     * 用户登出
+     *
+     * @return 结果
+     */
+    @Operation(summary = "用户登出")
+    @PostMapping("/logout")
+    @RequiresAuthentication
+    public Result<Boolean> logout() {
+        sysUserService.logout();
+        return Result.success(true, "登出成功");
+    }
 } 

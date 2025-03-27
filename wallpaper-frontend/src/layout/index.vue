@@ -106,22 +106,45 @@ const handleCommand = async (command: string) => {
         }
       );
       
+      // 显示退出登录中的加载状态
+      const loading = ElMessage.info({
+        message: '正在退出登录...',
+        duration: 0
+      });
+      
       try {
-        await logout();
+        // 调用退出接口
+        const res = await logout();
+        console.log('退出登录成功:', res);
+        
+        // 关闭加载提示
+        loading.close();
+        
+        // 清除本地存储的用户信息和token
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        
+        // 显示退出成功提示
+        ElMessage.success('已退出登录');
+        
+        // 跳转到登录页
+        router.push('/login');
       } catch (error) {
-        console.error('登出API调用失败:', error);
+        console.error('退出登录失败:', error);
+        
+        // 关闭加载提示
+        loading.close();
+        
         // 即使API调用失败，也清除本地存储并跳转到登录页
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        
+        ElMessage.warning('退出登录请求失败，已强制登出');
+        router.push('/login');
       }
-      
-      // 清除本地存储的用户信息和token
-      localStorage.removeItem('token');
-      localStorage.removeItem('userInfo');
-      
-      // 跳转到登录页
-      router.push('/login');
-      ElMessage.success('已退出登录');
     } catch {
       // 用户取消退出登录
+      console.log('用户取消了退出登录');
     }
   } else if (command === 'profile') {
     // 处理个人信息页面跳转

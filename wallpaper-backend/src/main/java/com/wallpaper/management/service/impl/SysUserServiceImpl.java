@@ -238,4 +238,29 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private String encryptPassword(String password) {
         return new SimpleHash(ALGORITHM_NAME, password, SALT, HASH_ITERATIONS).toHex();
     }
+
+    /**
+     * 用户登出
+     */
+    @Override
+    public void logout() {
+        try {
+            Long userId = ShiroUtil.getUserId();
+            String username = ShiroUtil.getUsername();
+            
+            if (userId != null) {
+                log.info("用户登出 - userId: {}, username: {}", userId, username);
+                
+                // 使用Shiro进行登出操作
+                Subject subject = SecurityUtils.getSubject();
+                subject.logout();
+                
+                log.info("用户登出成功 - userId: {}, username: {}", userId, username);
+            } else {
+                log.warn("用户登出失败 - 未获取到用户信息");
+            }
+        } catch (Exception e) {
+            log.error("用户登出异常", e);
+        }
+    }
 } 

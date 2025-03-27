@@ -127,9 +127,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getWallpaperList } from '@/api/wallpaper'
-import { getAllCategories } from '@/api/category'
-import { getHotTags } from '@/api/tag'
+import { getWallpaperList, getLatestWallpapers } from '@/api/wallpaper'
+import { getAllCategories, getCategoryTree } from '@/api/category'
+import { getHotTags, getAllTags } from '@/api/tag'
 import type { Wallpaper, Tag } from '@/types'
 
 const router = useRouter()
@@ -167,64 +167,100 @@ const fetchStatistics = async () => {
   loading.statistics = true
   try {
     // 这里假设后端有一个统计接口，如果没有，可以分别调用各个接口获取数据
-    const [wallpaperRes, categoryRes, tagRes] = await Promise.all([
+    const promises = [
       getWallpaperList({ pageNum: 1, pageSize: 1 }),
-      getAllCategories(),
-      getHotTags()
-    ])
+      getCategoryTree(),
+      getAllTags()
+    ];
     
-    statistics.totalWallpapers = wallpaperRes.data.total || 0
-    statistics.totalCategories = categoryRes.data.length || 0
-    statistics.totalTags = tagRes.data.length || 0
+    console.log('开始获取统计数据');
+    const [wallpaperRes, categoryRes, tagRes] = await Promise.all(promises);
+    console.log('获取到壁纸数据:', wallpaperRes);
+    console.log('获取到分类数据:', categoryRes);
+    console.log('获取到标签数据:', tagRes);
+    
+    if (wallpaperRes && wallpaperRes.data) {
+      statistics.totalWallpapers = wallpaperRes.data.total || 0;
+    }
+    
+    if (categoryRes && categoryRes.data) {
+      statistics.totalCategories = categoryRes.data.length || 0;
+    }
+    
+    if (tagRes && tagRes.data) {
+      statistics.totalTags = tagRes.data.length || 0;
+    }
     
     // 计算今日上传，实际项目中应该由后端提供
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    if (wallpaperRes.data.list && wallpaperRes.data.list.length > 0) {
-      statistics.todayUploads = wallpaperRes.data.list.filter((item: Wallpaper) => {
-        const uploadDate = new Date(item.createTime)
-        return uploadDate >= today
-      }).length
+    if (wallpaperRes.data && wallpaperRes.data.list && wallpaperRes.data.list.length > 0) {
+      // 获取最新壁纸用于计算今日上传
+      const latestRes = await getLatestWallpapers(20);
+      console.log('获取到最新壁纸:', latestRes);
+      
+      if (latestRes && latestRes.data) {
+        statistics.todayUploads = latestRes.data.filter((item: Wallpaper) => {
+          if (!item.createTime) return false;
+          const uploadDate = new Date(item.createTime);
+          return uploadDate >= today;
+        }).length;
+      }
     }
   } catch (error) {
-    console.error('获取统计数据失败:', error)
-    ElMessage.error('获取统计数据失败')
+    console.error('获取统计数据失败:', error);
+    ElMessage.error('获取统计数据失败');
   } finally {
-    loading.statistics = false
+    loading.statistics = false;
   }
-}
+};
 
 // 获取最近上传
 const fetchRecentUploads = async () => {
-  loading.recentUploads = true
+  loading.recentUploads = true;
   try {
-    const res = await getWallpaperList({
-      pageNum: 1,
-      pageSize: 5
-    })
-    recentUploads.value = res.data.list
+    console.log('开始获取最新壁纸');
+    const res = await getLatestWallpapers(5);
+    console.log('获取到最新壁纸:', res);
+    
+    if (res && res.data) {
+      recentUploads.value = res.data;
+    } else {
+      console.warn('最新壁纸数据格式不正确:', res);
+      recentUploads.value = [];
+    }
   } catch (error) {
-    console.error('获取最近上传失败:', error)
-    ElMessage.error('获取最近上传失败')
+    console.error('获取最近上传失败:', error);
+    ElMessage.error('获取最近上传失败');
+    recentUploads.value = [];
   } finally {
-    loading.recentUploads = false
+    loading.recentUploads = false;
   }
-}
+};
 
 // 获取热门标签
 const fetchHotTags = async () => {
-  loading.hotTags = true
+  loading.hotTags = true;
   try {
-    const res = await getHotTags(10)
-    hotTags.value = res.data
+    console.log('开始获取热门标签');
+    const res = await getHotTags(10);
+    console.log('获取到热门标签:', res);
+    
+    if (res && res.data) {
+      hotTags.value = res.data;
+    } else {
+      console.warn('热门标签数据格式不正确:', res);
+      hotTags.value = [];
+    }
   } catch (error) {
-    console.error('获取热门标签失败:', error)
-    ElMessage.error('获取热门标签失败')
+    console.error('获取热门标签失败:', error);
+    ElMessage.error('获取热门标签失败');
+    hotTags.value = [];
   } finally {
-    loading.hotTags = false
+    loading.hotTags = false;
   }
-}
+};
 
 // 随机获取标签类型
 const getRandomTagType = () => {

@@ -51,6 +51,23 @@ const redirectToLogin = () => {
   }
 }
 
+// 处理认证失败
+const handleAuthFailure = (message = '登录已过期，请重新登录') => {
+  // 避免多个请求同时触发重定向
+  if (!isRefreshing) {
+    isRefreshing = true
+    
+    ElMessage.error(message)
+    // 重定向到登录页
+    redirectToLogin()
+    
+    // 重置标记
+    setTimeout(() => {
+      isRefreshing = false
+    }, 1000)
+  }
+};
+
 // 响应拦截器
 instance.interceptors.response.use(
   (response) => {
@@ -58,25 +75,18 @@ instance.interceptors.response.use(
     const res = response.data
     console.log('响应拦截器收到响应:', res)
     
+    // 如果是退出登录接口，直接返回结果，不进行统一错误处理
+    if (response.config.url?.includes('/user/logout')) {
+      return res
+    }
+    
     if (res.code !== 200) {
       // 处理各种错误情况，如token过期等
       console.error('响应状态码错误:', res.code, res.message)
       
       // 处理401未授权的情况
       if (res.code === 401) {
-        // 避免多个请求同时触发重定向
-        if (!isRefreshing) {
-          isRefreshing = true
-          
-          ElMessage.error('登录已过期，请重新登录')
-          // 重定向到登录页
-          redirectToLogin()
-          
-          // 重置标记
-          setTimeout(() => {
-            isRefreshing = false
-          }, 1000)
-        }
+        handleAuthFailure(res.message || '登录已过期，请重新登录')
       } else {
         // 其他错误状态码，显示错误信息
         ElMessage.error(res.message || '请求失败')
@@ -90,24 +100,17 @@ instance.interceptors.response.use(
     // 对响应错误做点什么
     console.error('请求发生错误:', error)
     
+    // 如果是退出登录请求发生错误，直接返回错误，允许上层代码处理
+    if (error.config?.url?.includes('/user/logout')) {
+      return Promise.reject(error)
+    }
+    
     if (error.response) {
       const { status } = error.response
       
       // 处理401未授权的情况
       if (status === 401) {
-        // 避免多个请求同时触发重定向
-        if (!isRefreshing) {
-          isRefreshing = true
-          
-          ElMessage.error('登录已过期，请重新登录')
-          // 重定向到登录页
-          redirectToLogin()
-          
-          // 重置标记
-          setTimeout(() => {
-            isRefreshing = false
-          }, 1000)
-        }
+        handleAuthFailure()
       } else if (status === 403) {
         ElMessage.error('没有权限访问')
       } else if (status === 404) {

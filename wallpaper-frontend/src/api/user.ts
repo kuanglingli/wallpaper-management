@@ -35,5 +35,14 @@ export function getUserInfo() {
  * 用户登出
  */
 export function logout() {
+  console.log('发送登出请求')
   return request.post<any, ApiResponse<any>>('/user/logout')
+    .then((response: any) => {
+      console.log('登出响应:', response)
+      return response
+    })
+    .catch((error: any) => {
+      console.error('登出请求错误:', error)
+      throw error
+    })
 } 

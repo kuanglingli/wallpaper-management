@@ -5,14 +5,16 @@ import type { ApiResponse, Category, PageResult, PaginationParams } from '../typ
  * 获取分类列表
  */
 export function getCategoryList(params?: PaginationParams) {
-  return request.get<any, ApiResponse<PageResult<Category>>>('/category/list', { params })
+  console.log('请求分类列表，参数:', params)
+  return request.get<any, ApiResponse<PageResult<Category>>>('/category/page', { params })
 }
 
 /**
  * 获取所有分类（不分页）
  */
 export function getAllCategories() {
-  return request.get<any, ApiResponse<Category[]>>('/category/all')
+  console.log('请求所有分类')
+  return request.get<any, ApiResponse<Category[]>>('/category/tree')
 }
 
 /**
@@ -33,7 +35,7 @@ export function addCategory(data: Partial<Category>) {
  * 更新分类
  */
 export function updateCategory(data: Partial<Category>) {
-  return request.put<any, ApiResponse<any>>(`/category/${data.id}`, data)
+  return request.put<any, ApiResponse<any>>(`/category`, data)
 }
 
 /**
@@ -41,4 +43,18 @@ export function updateCategory(data: Partial<Category>) {
  */
 export function deleteCategory(id: number) {
   return request.delete<any, ApiResponse<any>>(`/category/${id}`)
+}
+
+/**
+ * 获取分类树
+ */
+export function getCategoryTree() {
+  return request.get<any, ApiResponse<Category[]>>('/category/tree')
+}
+
+/**
+ * 获取子分类
+ */
+export function getCategoryChildren(parentId: number = 0) {
+  return request.get<any, ApiResponse<Category[]>>('/category/children', { params: { parentId } })
 } 
