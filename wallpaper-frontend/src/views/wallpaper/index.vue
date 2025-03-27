@@ -6,7 +6,7 @@
           <el-input v-model="searchForm.title" placeholder="请输入壁纸标题" clearable />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable>
+          <el-select style="width: 200px;" v-model="searchForm.categoryId" placeholder="请选择分类" clearable>
             <el-option
               v-for="item in categories"
               :key="item.id"
@@ -16,7 +16,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="标签">
-          <el-select
+          <el-select style="width: 200px;"
             v-model="searchForm.tagIds"
             placeholder="请选择标签"
             multiple

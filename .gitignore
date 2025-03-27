@@ -1,0 +1,3 @@
+wallpaper-frontend/node_modules/*
+wallpaper-backend/target/*
+.vscode/*
