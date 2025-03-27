@@ -290,15 +290,40 @@ onMounted(async () => {
 // 获取分类和标签
 const fetchCategoriesAndTags = async () => {
   try {
+    console.log('开始获取分类和标签数据');
+    
+    // 使用Promise.all同时请求分类和标签数据
     const [categoryRes, tagRes] = await Promise.all([
       getAllCategories(),
       getAllTags()
-    ])
-    categories.value = categoryRes.data
-    tags.value = tagRes.data
+    ]);
+    
+    console.log('获取到分类数据:', categoryRes);
+    console.log('获取到标签数据:', tagRes);
+    
+    // 确保分类数据正确填充
+    if (categoryRes?.data && Array.isArray(categoryRes.data)) {
+      categories.value = categoryRes.data;
+      console.log('分类数据已填充:', categories.value);
+    } else {
+      console.warn('分类数据结构不符合预期:', categoryRes);
+      categories.value = [];
+    }
+    
+    // 确保标签数据正确填充
+    if (tagRes?.data && Array.isArray(tagRes.data)) {
+      tags.value = tagRes.data;
+      console.log('标签数据已填充:', tags.value);
+    } else {
+      console.warn('标签数据结构不符合预期:', tagRes);
+      tags.value = [];
+    }
   } catch (error) {
-    console.error('获取分类或标签失败:', error)
-    ElMessage.error('获取分类或标签失败')
+    console.error('获取分类或标签失败:', error);
+    ElMessage.error('获取分类或标签失败，请检查网络连接');
+    // 设置为空数组以避免页面错误
+    categories.value = [];
+    tags.value = [];
   }
 }
 
