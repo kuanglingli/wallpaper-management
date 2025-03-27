@@ -164,13 +164,13 @@ onMounted(() => {
 
 // 获取统计数据
 const fetchStatistics = async () => {
-  loading.statistics = true
+  loading.statistics = true;
   try {
-    // 这里假设后端有一个统计接口，如果没有，可以分别调用各个接口获取数据
+    // 使用壁纸分页接口、分类列表接口和标签列表接口获取统计数据
     const promises = [
       getWallpaperList({ pageNum: 1, pageSize: 1 }),
-      getCategoryTree(),
-      getAllTags()
+      getCategoryList({ pageNum: 1, pageSize: 1000 }),
+      getTagList({ pageNum: 1, pageSize: 1000 })
     ];
     
     console.log('开始获取统计数据');
@@ -179,34 +179,73 @@ const fetchStatistics = async () => {
     console.log('获取到分类数据:', categoryRes);
     console.log('获取到标签数据:', tagRes);
     
-    if (wallpaperRes && wallpaperRes.data) {
-      statistics.totalWallpapers = wallpaperRes.data.total || 0;
+    // 注意: 处理可能的数据结构不匹配
+    // 壁纸总数
+    if (wallpaperRes?.data?.total !== undefined) {
+      statistics.totalWallpapers = wallpaperRes.data.total;
+    } else if (wallpaperRes?.data?.records && Array.isArray(wallpaperRes.data.records)) {
+      statistics.totalWallpapers = wallpaperRes.data.records.length;
+    } else {
+      statistics.totalWallpapers = 0;
     }
     
-    if (categoryRes && categoryRes.data) {
-      statistics.totalCategories = categoryRes.data.length || 0;
+    // 分类总数
+    if (categoryRes?.data?.total !== undefined) {
+      statistics.totalCategories = categoryRes.data.total;
+    } else if (categoryRes?.data?.list && Array.isArray(categoryRes.data.list)) {
+      statistics.totalCategories = categoryRes.data.list.length;
+    } else if (categoryRes?.data && Array.isArray(categoryRes.data)) {
+      statistics.totalCategories = categoryRes.data.length;
+    } else {
+      statistics.totalCategories = 0;
     }
     
-    if (tagRes && tagRes.data) {
-      statistics.totalTags = tagRes.data.length || 0;
+    // 标签总数
+    if (tagRes?.data?.total !== undefined) {
+      statistics.totalTags = tagRes.data.total;
+    } else if (tagRes?.data?.list && Array.isArray(tagRes.data.list)) {
+      statistics.totalTags = tagRes.data.list.length;
+    } else if (tagRes?.data && Array.isArray(tagRes.data)) {
+      statistics.totalTags = tagRes.data.length;
+    } else {
+      statistics.totalTags = 0;
     }
     
-    // 计算今日上传，实际项目中应该由后端提供
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (wallpaperRes.data && wallpaperRes.data.list && wallpaperRes.data.list.length > 0) {
-      // 获取最新壁纸用于计算今日上传
-      const latestRes = await getLatestWallpapers(20);
+    // 计算今日上传，尝试使用分页接口获取最新壁纸
+    try {
+      // 使用page接口而不是latest
+      const latestRes = await getWallpaperList({ 
+        pageNum: 1, 
+        pageSize: 20,
+        sort: 'createTime,desc' // 按创建时间降序排序
+      });
       console.log('获取到最新壁纸:', latestRes);
       
-      if (latestRes && latestRes.data) {
-        statistics.todayUploads = latestRes.data.filter((item: Wallpaper) => {
-          if (!item.createTime) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // 从分页结果中获取壁纸列表
+      let wallpapers = [];
+      if (latestRes?.data?.list && Array.isArray(latestRes.data.list)) {
+        wallpapers = latestRes.data.list;
+      } else if (latestRes?.data?.records && Array.isArray(latestRes.data.records)) {
+        wallpapers = latestRes.data.records;
+      }
+      
+      // 计算今日上传数量
+      statistics.todayUploads = wallpapers.filter((item: Wallpaper) => {
+        if (!item.createTime) return false;
+        try {
           const uploadDate = new Date(item.createTime);
           return uploadDate >= today;
-        }).length;
-      }
+        } catch (e) {
+          console.error('日期解析错误:', e);
+          return false;
+        }
+      }).length;
+    } catch (error) {
+      console.error('获取最新壁纸失败:', error);
+      statistics.todayUploads = 0;
     }
   } catch (error) {
     console.error('获取统计数据失败:', error);
@@ -221,11 +260,19 @@ const fetchRecentUploads = async () => {
   loading.recentUploads = true;
   try {
     console.log('开始获取最新壁纸');
-    const res = await getLatestWallpapers(5);
+    // 使用分页接口获取最新壁纸，而不是专门的latest接口
+    const res = await getWallpaperList({ 
+      pageNum: 1, 
+      pageSize: 5,
+      sort: 'createTime,desc' // 按创建时间降序排序
+    });
     console.log('获取到最新壁纸:', res);
     
-    if (res && res.data) {
-      recentUploads.value = res.data;
+    // 兼容不同的返回数据结构
+    if (res?.data?.list && Array.isArray(res.data.list)) {
+      recentUploads.value = res.data.list;
+    } else if (res?.data?.records && Array.isArray(res.data.records)) {
+      recentUploads.value = res.data.records;
     } else {
       console.warn('最新壁纸数据格式不正确:', res);
       recentUploads.value = [];
@@ -244,10 +291,20 @@ const fetchHotTags = async () => {
   loading.hotTags = true;
   try {
     console.log('开始获取热门标签');
-    const res = await getHotTags(10);
+    // 使用分页接口获取标签，按照壁纸数量降序排序
+    const res = await getTagList({ 
+      pageNum: 1, 
+      pageSize: 10,
+      sort: 'wallpaperCount,desc' // 按壁纸数量降序排序
+    });
     console.log('获取到热门标签:', res);
     
-    if (res && res.data) {
+    // 兼容不同的返回数据结构
+    if (res?.data?.list && Array.isArray(res.data.list)) {
+      hotTags.value = res.data.list;
+    } else if (res?.data?.records && Array.isArray(res.data.records)) {
+      hotTags.value = res.data.records;
+    } else if (res?.data && Array.isArray(res.data)) {
       hotTags.value = res.data;
     } else {
       console.warn('热门标签数据格式不正确:', res);

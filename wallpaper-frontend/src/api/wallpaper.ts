@@ -5,8 +5,18 @@ import type { ApiResponse, Wallpaper, WallpaperQueryParams, PageResult } from '.
  * 获取壁纸列表
  */
 export function getWallpaperList(params: WallpaperQueryParams) {
-  console.log('请求壁纸列表，参数:', params)
-  return request.get<any, ApiResponse<PageResult<Wallpaper>>>('/wallpaper/page', { params })
+  // 将分页参数转换为正确的格式
+  const convertedParams = {
+    ...params,
+    // 确保pageNum和pageSize是数字类型
+    page: params.pageNum ? Number(params.pageNum) : 1,
+    pageSize: params.pageSize ? Number(params.pageSize) : 10
+  };
+  
+  console.log('请求壁纸列表，转换后参数:', convertedParams);
+  return request.get<any, ApiResponse<PageResult<Wallpaper>>>('/wallpaper/page', { 
+    params: convertedParams 
+  });
 }
 
 /**

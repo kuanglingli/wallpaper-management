@@ -7,14 +7,20 @@ export interface ApiResponse<T = any> {
 
 // 分页请求参数
 export interface PaginationParams {
-  pageNum: number
-  pageSize: number
+  pageNum?: number;
+  pageSize?: number;
+  // 添加排序字段，支持后端的排序功能
+  sort?: string;
 }
 
 // 分页响应结果
 export interface PageResult<T> {
-  total: number
-  list: T[]
+  total: number;
+  list?: T[];    // 某些后端实现可能用list
+  records?: T[]; // 某些后端实现可能用records（如MyBatis-Plus）
+  size?: number;
+  current?: number;
+  pages?: number;
 }
 
 // 壁纸相关类型

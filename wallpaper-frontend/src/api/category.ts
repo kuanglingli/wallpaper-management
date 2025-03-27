@@ -5,8 +5,17 @@ import type { ApiResponse, Category, PageResult, PaginationParams } from '../typ
  * 获取分类列表
  */
 export function getCategoryList(params?: PaginationParams) {
-  console.log('请求分类列表，参数:', params)
-  return request.get<any, ApiResponse<PageResult<Category>>>('/category/page', { params })
+  // 将分页参数转换为正确的格式
+  const convertedParams = {
+    // 确保page和pageSize是数字类型
+    page: params?.pageNum ? Number(params.pageNum) : 1,
+    pageSize: params?.pageSize ? Number(params.pageSize) : 10
+  };
+  
+  console.log('请求分类列表，转换后参数:', convertedParams);
+  return request.get<any, ApiResponse<PageResult<Category>>>('/category/page', { 
+    params: convertedParams 
+  });
 }
 
 /**
