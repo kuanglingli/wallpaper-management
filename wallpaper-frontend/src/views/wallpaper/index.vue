@@ -277,7 +277,19 @@ const rules = {
     { required: true, message: '请选择分类', trigger: 'change' }
   ],
   imageUrl: [
-    { required: true, message: '请上传壁纸图片', trigger: 'change' }
+    { 
+      required: true, 
+      message: '请上传壁纸图片', 
+      trigger: 'change',
+      validator: (rule: any, value: string, callback: Function) => {
+        // 如果是编辑模式且已有图片，或者有上传的新图片
+        if ((dialogType.value === 'edit' && value) || uploadFile.value) {
+          callback(); // 验证通过
+        } else {
+          callback(new Error('请上传壁纸图片'));
+        }
+      }
+    }
   ]
 }
 
@@ -388,8 +400,12 @@ const resetForm = () => {
 const handleAdd = () => {
   dialogType.value = 'add'
   dialogVisible.value = true
+  
+  // 确保清空所有图片相关状态
   uploadImageUrl.value = ''
   uploadFile.value = null
+  
+  // 重置表单数据
   Object.assign(form, {
     id: undefined,
     title: '',
@@ -399,6 +415,13 @@ const handleAdd = () => {
     categoryId: undefined,
     tagIds: []
   })
+  
+  // 延迟一下再重置表单验证状态
+  setTimeout(() => {
+    if (formRef.value) {
+      formRef.value.resetFields()
+    }
+  }, 0)
 }
 
 // 编辑壁纸
@@ -477,6 +500,10 @@ const handleFileChange = (file: any) => {
   
   uploadImageUrl.value = URL.createObjectURL(file.raw)
   uploadFile.value = file.raw
+  
+  // 设置临时URL到表单的imageUrl字段，通过验证
+  // 实际URL会在提交时由uploadWallpaperImage替换
+  form.imageUrl = uploadImageUrl.value
 }
 
 // 重新上传
@@ -485,11 +512,22 @@ const handleReupload = () => {
   form.thumbnailUrl = ''
   uploadImageUrl.value = ''
   uploadFile.value = null
+  
+  // 如果在编辑模式下重新上传，需要手动触发表单验证
+  if (dialogType.value === 'edit' && formRef.value) {
+    formRef.value.validateField('imageUrl')
+  }
 }
 
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
+  
+  // 再次检查是否有图片上传
+  if (dialogType.value === 'add' && !uploadFile.value) {
+    ElMessage.warning('请上传壁纸图片')
+    return
+  }
   
   await formRef.value.validate(async (valid) => {
     if (!valid) return
@@ -498,10 +536,19 @@ const handleSubmit = async () => {
     try {
       // 如果有上传新文件，先上传图片
       if (uploadFile.value) {
+        console.log('开始上传图片文件...')
         const uploadRes = await uploadWallpaperImage(uploadFile.value)
+        console.log('图片上传成功:', uploadRes)
         form.imageUrl = uploadRes.data.url
         form.thumbnailUrl = uploadRes.data.thumbnailUrl
+      } else if (dialogType.value === 'add') {
+        // 如果是添加模式且没有上传文件，停止提交
+        ElMessage.warning('请上传壁纸图片')
+        submitLoading.value = false
+        return
       }
+      
+      console.log('保存壁纸信息:', form)
       
       // 保存壁纸信息
       if (dialogType.value === 'add') {

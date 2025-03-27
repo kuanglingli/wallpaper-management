@@ -13,7 +13,11 @@
       border
     >
       <el-table-column type="index" label="序号" width="60" />
-      <el-table-column prop="name" label="分类名称" />
+      <el-table-column label="分类名称">
+        <template #default="{ row }">
+          {{ row.name || row.categoryName }}
+        </template>
+      </el-table-column>
       <el-table-column prop="description" label="描述" />
       <el-table-column prop="wallpaperCount" label="壁纸数量" width="120" />
       <el-table-column prop="createTime" label="创建时间" width="180" />
@@ -109,6 +113,7 @@ const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
 const form = reactive<Partial<Category>>({
   name: '',
+  categoryName: '',
   description: ''
 })
 
@@ -129,16 +134,39 @@ onMounted(() => {
 
 // 获取分类列表
 const fetchCategories = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const res = await getCategoryList(pagination)
-    categoryList.value = res.data.list
-    total.value = res.data.total
+    console.log('开始获取分类列表...');
+    const res = await getCategoryList(pagination);
+    console.log('获取到分类数据:', res);
+    
+    // 处理不同的数据格式
+    if (res.data && res.data.list && Array.isArray(res.data.list)) {
+      categoryList.value = res.data.list;
+      total.value = res.data.total || res.data.list.length;
+      console.log('成功加载分类列表:', categoryList.value);
+    } else if (res.data && res.data.records && Array.isArray(res.data.records)) {
+      categoryList.value = res.data.records;
+      total.value = res.data.total || res.data.records.length;
+      console.log('成功加载分类列表(records格式):', categoryList.value);
+    } else if (res.data && Array.isArray(res.data)) {
+      // 如果返回的不是分页格式而是直接的数组
+      categoryList.value = res.data;
+      total.value = res.data.length;
+      console.log('成功加载分类列表(直接数组格式):', categoryList.value);
+    } else {
+      console.error('分类数据格式异常:', res);
+      ElMessage.warning('分类数据格式异常，请联系管理员');
+      categoryList.value = [];
+      total.value = 0;
+    }
   } catch (error) {
-    console.error('获取分类列表失败:', error)
-    ElMessage.error('获取分类列表失败')
+    console.error('获取分类列表失败:', error);
+    ElMessage.error('获取分类列表失败，请检查网络连接');
+    categoryList.value = [];
+    total.value = 0;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
@@ -149,6 +177,7 @@ const handleAdd = () => {
   Object.assign(form, {
     id: undefined,
     name: '',
+    categoryName: '',
     description: ''
   })
 }
@@ -160,7 +189,8 @@ const handleEdit = (row: Category) => {
   
   Object.assign(form, {
     id: row.id,
-    name: row.name,
+    name: row.name || row.categoryName,
+    categoryName: row.categoryName || row.name,
     description: row.description
   })
 }
@@ -209,6 +239,13 @@ const handleSubmit = async () => {
     
     submitLoading.value = true
     try {
+      // 确保两个字段都有值
+      if (form.name && !form.categoryName) {
+        form.categoryName = form.name;
+      } else if (form.categoryName && !form.name) {
+        form.name = form.categoryName;
+      }
+      
       if (dialogType.value === 'add') {
         await addCategory(form)
         ElMessage.success('添加成功')
