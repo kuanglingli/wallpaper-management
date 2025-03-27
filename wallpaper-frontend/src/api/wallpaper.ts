@@ -160,14 +160,38 @@ export function getWallpaperDetail(id: number) {
  * 添加壁纸
  */
 export function addWallpaper(data: Partial<Wallpaper>) {
-  return request.post<any, ApiResponse<any>>('/wallpaper', data)
+  // 确保包含上传用户ID
+  const userInfo = localStorage.getItem('userInfo');
+  let uploadUserId = 1; // 默认用户ID
+  
+  if (userInfo) {
+    try {
+      const userObj = JSON.parse(userInfo);
+      if (userObj && userObj.id) {
+        uploadUserId = userObj.id;
+      }
+    } catch (e) {
+      console.error('解析用户信息失败:', e);
+    }
+  }
+  
+  // 创建一个新对象，包含原始数据和上传用户ID
+  const wallpaperData = {
+    ...data,
+    uploadUserId
+  };
+  
+  console.log('添加壁纸数据:', wallpaperData);
+  
+  return request.post<any, ApiResponse<any>>('/wallpaper', wallpaperData)
 }
 
 /**
  * 更新壁纸
  */
 export function updateWallpaper(data: Partial<Wallpaper>) {
-  return request.put<any, ApiResponse<any>>(`/wallpaper/${data.id}`, data)
+  console.log('更新壁纸数据:', data);
+  return request.put<any, ApiResponse<any>>(`/wallpaper`, data)
 }
 
 /**
@@ -180,9 +204,53 @@ export function deleteWallpaper(id: number) {
 /**
  * 上传壁纸图片
  */
-export function uploadWallpaperImage(file: File) {
+export function uploadWallpaperImage(file: File, wallpaperData?: Partial<Wallpaper>) {
   const formData = new FormData()
   formData.append('file', file)
+  
+  // 从localStorage获取当前用户ID，如果没有则使用默认值1
+  const userInfo = localStorage.getItem('userInfo');
+  let uploadUserId = 1; // 默认用户ID
+  
+  if (userInfo) {
+    try {
+      const userObj = JSON.parse(userInfo);
+      if (userObj && userObj.id) {
+        uploadUserId = userObj.id;
+      }
+    } catch (e) {
+      console.error('解析用户信息失败:', e);
+    }
+  }
+  
+  // 添加上传用户ID参数
+  formData.append('uploadUserId', uploadUserId.toString());
+  
+  // 如果提供了壁纸数据，添加到表单
+  if (wallpaperData) {
+    if (wallpaperData.title) {
+      formData.append('title', wallpaperData.title);
+    }
+    if (wallpaperData.description) {
+      formData.append('description', wallpaperData.description);
+    }
+    if (wallpaperData.categoryId) {
+      formData.append('categoryId', wallpaperData.categoryId.toString());
+    }
+    // 标签ID可能是数组，需要特殊处理
+    if (wallpaperData.tagIds && wallpaperData.tagIds.length > 0) {
+      wallpaperData.tagIds.forEach((tagId, index) => {
+        formData.append(`tagIds[${index}]`, tagId.toString());
+      });
+    }
+  }
+  
+  console.log('上传壁纸参数:', {
+    file: file.name,
+    uploadUserId: uploadUserId,
+    wallpaperData: wallpaperData
+  });
+  
   return request.post<any, ApiResponse<{ url: string, thumbnailUrl: string }>>(
     '/wallpaper/upload',
     formData,

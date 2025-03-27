@@ -534,40 +534,70 @@ const handleSubmit = async () => {
     
     submitLoading.value = true
     try {
+      // 准备提交的壁纸数据
+      const wallpaperData = { ...form };
+      
+      // 确保tagIds不为空数组
+      if (!wallpaperData.tagIds || wallpaperData.tagIds.length === 0) {
+        wallpaperData.tagIds = null;
+      }
+      
       // 如果有上传新文件，先上传图片
       if (uploadFile.value) {
-        console.log('开始上传图片文件...')
-        const uploadRes = await uploadWallpaperImage(uploadFile.value)
-        console.log('图片上传成功:', uploadRes)
-        form.imageUrl = uploadRes.data.url
-        form.thumbnailUrl = uploadRes.data.thumbnailUrl
+        console.log('开始上传图片文件...');
+        
+        // 在编辑模式下，需要保留原有ID
+        if (dialogType.value === 'edit' && wallpaperData.id) {
+          console.log('编辑模式，保留壁纸ID:', wallpaperData.id);
+        }
+        
+        // 将壁纸基本信息作为参数传递给上传函数
+        const uploadRes = await uploadWallpaperImage(uploadFile.value, {
+          title: wallpaperData.title,
+          description: wallpaperData.description,
+          categoryId: wallpaperData.categoryId,
+          tagIds: wallpaperData.tagIds as number[] || []
+        });
+        
+        console.log('图片上传成功:', uploadRes);
+        
+        // 获取上传返回的URLs
+        wallpaperData.imageUrl = uploadRes.data.url;
+        wallpaperData.thumbnailUrl = uploadRes.data.thumbnailUrl;
+        
+        // 如果是添加模式，可能已经创建了壁纸记录，可能不需要再调用addWallpaper
+        if (dialogType.value === 'add') {
+          console.log('图片已上传并添加成功');
+          ElMessage.success('壁纸上传成功');
+          dialogVisible.value = false;
+          fetchWallpapers();
+          submitLoading.value = false;
+          return;
+        }
       } else if (dialogType.value === 'add') {
         // 如果是添加模式且没有上传文件，停止提交
-        ElMessage.warning('请上传壁纸图片')
-        submitLoading.value = false
-        return
+        ElMessage.warning('请上传壁纸图片');
+        submitLoading.value = false;
+        return;
       }
       
-      console.log('保存壁纸信息:', form)
+      console.log('保存壁纸信息:', wallpaperData);
       
-      // 保存壁纸信息
-      if (dialogType.value === 'add') {
-        await addWallpaper(form)
-        ElMessage.success('添加成功')
-      } else {
-        await updateWallpaper(form)
-        ElMessage.success('更新成功')
+      // 仅在编辑模式下或特殊情况下执行
+      if (dialogType.value === 'edit') {
+        // 保存壁纸信息
+        await updateWallpaper(wallpaperData);
+        ElMessage.success('更新成功');
+        dialogVisible.value = false;
+        fetchWallpapers();
       }
-      
-      dialogVisible.value = false
-      fetchWallpapers()
     } catch (error) {
-      console.error('保存壁纸失败:', error)
-      ElMessage.error('保存壁纸失败')
+      console.error('保存壁纸失败:', error);
+      ElMessage.error('保存壁纸失败');
     } finally {
-      submitLoading.value = false
+      submitLoading.value = false;
     }
-  })
+  });
 }
 </script>
 
