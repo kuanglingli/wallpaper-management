@@ -1,5 +1,6 @@
 package com.wallpaper.management.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wallpaper.management.entity.WpCategory;
@@ -66,17 +67,17 @@ public class WpCategoryServiceImpl extends ServiceImpl<WpCategoryMapper, WpCateg
     /**
      * 获取指定父级分类下的所有子分类ID列表（包括子分类的子分类）
      *
-     * @param categoryId 父级分类ID
+     * @param parentId 父级分类ID
      * @return 子分类ID列表
      */
     @Override
-    public List<Long> getAllChildrenIds(Long categoryId) {
-        if (categoryId == null) {
+    public List<Long> getAllChildrenIds(Long parentId) {
+        if (parentId == null) {
             return Collections.emptyList();
         }
         
         List<Long> childIds = new ArrayList<>();
-        findAllChildren(categoryId, childIds);
+        findAllChildren(parentId, childIds);
         return childIds;
     }
 
@@ -109,6 +110,23 @@ public class WpCategoryServiceImpl extends ServiceImpl<WpCategoryMapper, WpCateg
         }
     }
 
+    /**
+     * 递归查找所有子分类ID
+     * 
+     * @param parentId 父分类ID
+     * @param result 结果列表
+     */
+    private void findAllChildren(Long parentId, List<Long> result) {
+        // 获取直接子分类
+        List<WpCategory> children = getChildrenByParentId(parentId);
+        
+        // 递归查找子分类的子分类
+        for (WpCategory child : children) {
+            result.add(child.getId());
+            findAllChildren(child.getId(), result);
+        }
+    }
+
     @Override
     public Map<Long, String> getCategoryNameMap(List<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
@@ -120,10 +138,8 @@ public class WpCategoryServiceImpl extends ServiceImpl<WpCategoryMapper, WpCateg
                 .collect(Collectors.toMap(
                         WpCategory::getId,
                         category -> {
-                            // 返回分类名称，优先使用name字段
-                            return StrUtil.isNotBlank(category.getName()) ? 
-                                    category.getName() : 
-                                    category.getCategoryName();
+                            // 返回分类名称，WpCategory只有categoryName字段
+                            return category.getCategoryName();
                         },
                         (a, b) -> a // 如果有重复键，保留第一个值
                 ));
