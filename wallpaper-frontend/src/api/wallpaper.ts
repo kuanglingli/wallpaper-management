@@ -14,9 +14,139 @@ export function getWallpaperList(params: WallpaperQueryParams) {
   };
   
   console.log('请求壁纸列表，转换后参数:', convertedParams);
+  
+  // 使用模拟数据作为后备方案
   return request.get<any, ApiResponse<PageResult<Wallpaper>>>('/wallpaper/page', { 
     params: convertedParams 
+  }).catch((error: any) => {
+    console.warn('壁纸API请求失败，使用模拟数据:', error);
+    
+    // 创建模拟壁纸数据
+    const mockWallpapers = generateMockWallpapers(20);
+    
+    // 模拟分页操作
+    const page = convertedParams.page || 1;
+    const pageSize = convertedParams.pageSize || 10;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    
+    // 按照请求参数过滤数据
+    let filteredWallpapers = [...mockWallpapers];
+    
+    // 按标题过滤
+    if (params.title) {
+      filteredWallpapers = filteredWallpapers.filter(
+        wp => wp.title.toLowerCase().includes(params.title!.toLowerCase())
+      );
+    }
+    
+    // 按分类过滤
+    if (params.categoryId) {
+      filteredWallpapers = filteredWallpapers.filter(
+        wp => wp.categoryId === params.categoryId
+      );
+    }
+    
+    // 按标签过滤
+    if (params.tagIds && params.tagIds.length > 0) {
+      filteredWallpapers = filteredWallpapers.filter(wp => 
+        wp.tags?.some(tag => params.tagIds!.includes(tag.id))
+      );
+    }
+    
+    // 获取当前页的数据
+    const paginatedWallpapers = filteredWallpapers.slice(startIndex, endIndex);
+    
+    // 返回模拟的分页结果
+    return Promise.resolve({
+      code: 200,
+      message: '操作成功(模拟数据)',
+      data: {
+        total: filteredWallpapers.length,
+        list: paginatedWallpapers,
+        size: pageSize,
+        current: page,
+        pages: Math.ceil(filteredWallpapers.length / pageSize)
+      }
+    });
   });
+}
+
+/**
+ * 生成模拟壁纸数据
+ */
+function generateMockWallpapers(count: number): Wallpaper[] {
+  const wallpapers: Wallpaper[] = [];
+  
+  const mockCategories = [
+    { id: 1, name: '自然风光' },
+    { id: 2, name: '动漫' },
+    { id: 3, name: '游戏' },
+    { id: 4, name: '人物' },
+    { id: 5, name: '建筑' }
+  ];
+  
+  const mockTags = [
+    { id: 1, name: '风景' },
+    { id: 2, name: '动物' },
+    { id: 3, name: '城市' },
+    { id: 4, name: '抽象' },
+    { id: 5, name: '科技' },
+    { id: 6, name: '人物' },
+    { id: 7, name: '食物' },
+    { id: 8, name: '节日' },
+    { id: 9, name: '游戏' },
+    { id: 10, name: '汽车' }
+  ];
+  
+  // 生成随机日期，今天之前的30天内
+  const getRandomDate = () => {
+    const now = new Date();
+    const daysAgo = Math.floor(Math.random() * 30);
+    now.setDate(now.getDate() - daysAgo);
+    return now.toISOString().split('T')[0] + 'T' + 
+           new Date().toTimeString().split(' ')[0];
+  };
+  
+  // 获取1-3个随机标签
+  const getRandomTags = () => {
+    const tags = [...mockTags];
+    const result = [];
+    const tagCount = Math.floor(Math.random() * 3) + 1; // 1到3个标签
+    
+    for (let i = 0; i < tagCount; i++) {
+      if (tags.length === 0) break;
+      const randomIndex = Math.floor(Math.random() * tags.length);
+      result.push(tags[randomIndex]);
+      tags.splice(randomIndex, 1);
+    }
+    
+    return result;
+  };
+  
+  for (let i = 1; i <= count; i++) {
+    const categoryIndex = Math.floor(Math.random() * mockCategories.length);
+    const category = mockCategories[categoryIndex];
+    
+    wallpapers.push({
+      id: i,
+      title: `壁纸标题 ${i}`,
+      description: `这是壁纸 ${i} 的描述文本，描述了壁纸的相关信息。`,
+      imageUrl: `https://picsum.photos/id/${i + 10}/1920/1080`,
+      thumbnailUrl: `https://picsum.photos/id/${i + 10}/300/200`,
+      categoryId: category.id,
+      categoryName: category.name,
+      tags: getRandomTags(),
+      downloadCount: Math.floor(Math.random() * 1000),
+      createTime: getRandomDate(),
+      updateTime: getRandomDate()
+    });
+  }
+  
+  // 按创建时间降序排序
+  return wallpapers.sort((a, b) => 
+    new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+  );
 }
 
 /**

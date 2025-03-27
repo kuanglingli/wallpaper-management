@@ -127,8 +127,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getWallpaperList, getLatestWallpapers } from '@/api/wallpaper'
-import { getAllCategories, getCategoryTree } from '@/api/category'
+import { getWallpaperList } from '@/api/wallpaper'
+import { getAllCategories } from '@/api/category'
 import { getHotTags, getAllTags } from '@/api/tag'
 import type { Wallpaper, Tag } from '@/types'
 
@@ -169,8 +169,8 @@ const fetchStatistics = async () => {
     // 使用壁纸分页接口、分类列表接口和标签列表接口获取统计数据
     const promises = [
       getWallpaperList({ pageNum: 1, pageSize: 1 }),
-      getCategoryList({ pageNum: 1, pageSize: 1000 }),
-      getTagList({ pageNum: 1, pageSize: 1000 })
+      getAllCategories(),
+      getAllTags()
     ];
     
     console.log('开始获取统计数据');
@@ -189,23 +189,15 @@ const fetchStatistics = async () => {
       statistics.totalWallpapers = 0;
     }
     
-    // 分类总数
-    if (categoryRes?.data?.total !== undefined) {
-      statistics.totalCategories = categoryRes.data.total;
-    } else if (categoryRes?.data?.list && Array.isArray(categoryRes.data.list)) {
-      statistics.totalCategories = categoryRes.data.list.length;
-    } else if (categoryRes?.data && Array.isArray(categoryRes.data)) {
+    // 分类总数 - 从getAllCategories返回的数组
+    if (categoryRes?.data && Array.isArray(categoryRes.data)) {
       statistics.totalCategories = categoryRes.data.length;
     } else {
       statistics.totalCategories = 0;
     }
     
-    // 标签总数
-    if (tagRes?.data?.total !== undefined) {
-      statistics.totalTags = tagRes.data.total;
-    } else if (tagRes?.data?.list && Array.isArray(tagRes.data.list)) {
-      statistics.totalTags = tagRes.data.list.length;
-    } else if (tagRes?.data && Array.isArray(tagRes.data)) {
+    // 标签总数 - 从getAllTags返回的数组
+    if (tagRes?.data && Array.isArray(tagRes.data)) {
       statistics.totalTags = tagRes.data.length;
     } else {
       statistics.totalTags = 0;
@@ -291,20 +283,12 @@ const fetchHotTags = async () => {
   loading.hotTags = true;
   try {
     console.log('开始获取热门标签');
-    // 使用分页接口获取标签，按照壁纸数量降序排序
-    const res = await getTagList({ 
-      pageNum: 1, 
-      pageSize: 10,
-      sort: 'wallpaperCount,desc' // 按壁纸数量降序排序
-    });
+    // 使用getHotTags API获取热门标签
+    const res = await getHotTags(10);
     console.log('获取到热门标签:', res);
     
-    // 兼容不同的返回数据结构
-    if (res?.data?.list && Array.isArray(res.data.list)) {
-      hotTags.value = res.data.list;
-    } else if (res?.data?.records && Array.isArray(res.data.records)) {
-      hotTags.value = res.data.records;
-    } else if (res?.data && Array.isArray(res.data)) {
+    // 从返回的数据中获取标签
+    if (res?.data && Array.isArray(res.data)) {
       hotTags.value = res.data;
     } else {
       console.warn('热门标签数据格式不正确:', res);
