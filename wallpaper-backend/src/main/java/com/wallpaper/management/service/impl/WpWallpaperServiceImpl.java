@@ -171,9 +171,6 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
     public IPage<WpWallpaper> pageWallpapers(Integer page, Integer pageSize, Long categoryId, Long tagId, String keyword) {
         LambdaQueryWrapper<WpWallpaper> queryWrapper = new LambdaQueryWrapper<>();
 
-//        // 状态为已审核
-//        queryWrapper.eq(WpWallpaper::getStatus, 1);
-
         // 分类条件
         if (categoryId != null) {
             // 获取当前分类及其所有子分类ID
@@ -219,7 +216,7 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
     public List<WpWallpaper> getRecommendWallpapers(Integer limit) {
         // 简单实现：根据下载量、浏览量和点赞数综合排序
         LambdaQueryWrapper<WpWallpaper> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(WpWallpaper::getStatus, 1)
+        queryWrapper
                 .orderByDesc(WpWallpaper::getDownloads)
                 .orderByDesc(WpWallpaper::getViews)
                 .orderByDesc(WpWallpaper::getLikes)
@@ -236,7 +233,7 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
     @Override
     public List<WpWallpaper> getLatestWallpapers(Integer limit) {
         LambdaQueryWrapper<WpWallpaper> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(WpWallpaper::getStatus, 1)
+        queryWrapper
                 .orderByDesc(WpWallpaper::getCreateTime)
                 .last("LIMIT " + limit);
         return list(queryWrapper);
@@ -251,7 +248,7 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
     @Override
     public List<WpWallpaper> getHotWallpapers(Integer limit) {
         LambdaQueryWrapper<WpWallpaper> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(WpWallpaper::getStatus, 1)
+        queryWrapper
                 .orderByDesc(WpWallpaper::getDownloads)
                 .last("LIMIT " + limit);
         return list(queryWrapper);

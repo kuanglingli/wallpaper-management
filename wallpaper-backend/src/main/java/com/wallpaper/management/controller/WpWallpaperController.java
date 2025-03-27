@@ -179,8 +179,11 @@ public class WpWallpaperController {
             return Result.error("壁纸不存在");
         }
         
+        // 构建完整URL
+        String fullUrl = ImageUtils.buildFullUrl(wallpaper.getFilePath(), baseUrl);
+        
         // 返回下载路径
-        return Result.success(wallpaper.getFilePath(), "获取下载路径成功");
+        return Result.success(fullUrl, "获取下载路径成功");
     }
 
     /**
@@ -194,6 +197,8 @@ public class WpWallpaperController {
     public Result<List<WpWallpaper>> recommend(
             @Parameter(description = "数量限制", required = true) @RequestParam(defaultValue = "10") Integer limit) {
         List<WpWallpaper> recommendWallpapers = wallpaperService.getRecommendWallpapers(limit);
+        // 填充附加信息
+        enhanceWallpaperList(recommendWallpapers);
         return Result.success(recommendWallpapers);
     }
 
@@ -208,6 +213,8 @@ public class WpWallpaperController {
     public Result<List<WpWallpaper>> latest(
             @Parameter(description = "数量限制", required = true) @RequestParam(defaultValue = "10") Integer limit) {
         List<WpWallpaper> latestWallpapers = wallpaperService.getLatestWallpapers(limit);
+        // 填充附加信息
+        enhanceWallpaperList(latestWallpapers);
         return Result.success(latestWallpapers);
     }
 
@@ -222,6 +229,8 @@ public class WpWallpaperController {
     public Result<List<WpWallpaper>> hot(
             @Parameter(description = "数量限制", required = true) @RequestParam(defaultValue = "10") Integer limit) {
         List<WpWallpaper> hotWallpapers = wallpaperService.getHotWallpapers(limit);
+        // 填充附加信息
+        enhanceWallpaperList(hotWallpapers);
         return Result.success(hotWallpapers);
     }
 
@@ -237,15 +246,33 @@ public class WpWallpaperController {
 
         // 获取所有壁纸ID
         List<Long> wallpaperIds = wallpapers.stream()
+                .filter(w -> w.getId() != null)
                 .map(WpWallpaper::getId)
                 .collect(Collectors.toList());
         
+        if (wallpaperIds.isEmpty()) {
+            // 如果没有有效的壁纸ID，只处理URL
+            for (WpWallpaper wallpaper : wallpapers) {
+                if (wallpaper.getFilePath() != null) {
+                    wallpaper.setImageUrl(ImageUtils.buildFullUrl(wallpaper.getFilePath(), baseUrl));
+                }
+                if (wallpaper.getThumbnailPath() != null) {
+                    wallpaper.setThumbnailUrl(ImageUtils.buildFullUrl(wallpaper.getThumbnailPath(), baseUrl));
+                }
+            }
+            return;
+        }
+        
         // 批量获取分类信息
         List<Long> categoryIds = wallpapers.stream()
+                .filter(w -> w.getCategoryId() != null)
                 .map(WpWallpaper::getCategoryId)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<Long, String> categoryNameMap = categoryService.getCategoryNameMap(categoryIds);
+        
+        Map<Long, String> categoryNameMap = categoryIds.isEmpty() ? 
+                new java.util.HashMap<>() : 
+                categoryService.getCategoryNameMap(categoryIds);
         
         // 批量获取标签关联信息
         Map<Long, List<Long>> wallpaperTagMap = new java.util.HashMap<>();
@@ -259,27 +286,37 @@ public class WpWallpaperController {
                 .flatMap(List::stream)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<Long, WpTag> tagMap = tagService.listByIds(allTagIds).stream()
-                .collect(Collectors.toMap(WpTag::getId, Function.identity()));
+        
+        Map<Long, WpTag> tagMap = allTagIds.isEmpty() ? 
+                new java.util.HashMap<>() : 
+                tagService.listByIds(allTagIds).stream()
+                    .collect(Collectors.toMap(WpTag::getId, Function.identity(), (a, b) -> a));
         
         // 填充壁纸信息
         for (WpWallpaper wallpaper : wallpapers) {
             // 设置URL
-            wallpaper.setImageUrl(ImageUtils.buildFullUrl(wallpaper.getFilePath(), baseUrl));
-            wallpaper.setThumbnailUrl(ImageUtils.buildFullUrl(wallpaper.getThumbnailPath(), baseUrl));
+            if (wallpaper.getFilePath() != null) {
+                wallpaper.setImageUrl(ImageUtils.buildFullUrl(wallpaper.getFilePath(), baseUrl));
+            }
+            if (wallpaper.getThumbnailPath() != null) {
+                wallpaper.setThumbnailUrl(ImageUtils.buildFullUrl(wallpaper.getThumbnailPath(), baseUrl));
+            }
             
             // 设置分类名称
-            if (categoryNameMap.containsKey(wallpaper.getCategoryId())) {
+            if (wallpaper.getCategoryId() != null && categoryNameMap.containsKey(wallpaper.getCategoryId())) {
                 wallpaper.setCategoryName(categoryNameMap.get(wallpaper.getCategoryId()));
             }
             
             // 设置标签列表
-            List<Long> tagIds = wallpaperTagMap.getOrDefault(wallpaper.getId(), new ArrayList<>());
-            List<WpTag> tags = tagIds.stream()
-                    .map(tagMap::get)
-                    .filter(tag -> tag != null)
-                    .collect(Collectors.toList());
-            wallpaper.setTags(tags);
+            if (wallpaper.getId() != null) {
+                List<Long> tagIds = wallpaperTagMap.getOrDefault(wallpaper.getId(), new ArrayList<>());
+                List<WpTag> tags = tagIds.stream()
+                        .filter(tagMap::containsKey)
+                        .map(tagMap::get)
+                        .filter(tag -> tag != null)
+                        .collect(Collectors.toList());
+                wallpaper.setTags(tags);
+            }
         }
     }
     

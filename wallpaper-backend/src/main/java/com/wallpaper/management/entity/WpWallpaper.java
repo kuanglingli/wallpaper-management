@@ -85,8 +85,7 @@ public class WpWallpaper extends BaseEntity {
     /**
      * 上传用户ID
      */
-<<<<<<< HEAD
-    private Long uploaderUserId;
+    private Long uploadUserId;
     
     /**
      * 图片URL (不映射数据库字段)
@@ -111,7 +110,4 @@ public class WpWallpaper extends BaseEntity {
      */
     @TableField(exist = false)
     private List<WpTag> tags;
-=======
-    private Long uploadUserId;
->>>>>>> 52dcbc08ae15191fc93420a0cebb08bea10a1a65
 } 
