@@ -33,9 +33,19 @@ public class Result<T> implements Serializable {
     private Boolean success;
 
     /**
-     * 私有构造方法
+     * 私有无参构造方法
      */
     private Result() {
+    }
+
+    /**
+     * 私有带参构造方法
+     */
+    private Result(Integer code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+        this.success = code.equals(ResultCode.SUCCESS.getCode());
     }
 
     /**
@@ -105,7 +115,12 @@ public class Result<T> implements Serializable {
      * @return 响应结果
      */
     public static <T> Result<T> error(int code, String message) {
-        return new Result<>(code, message, null);
+        Result<T> result = new Result<>();
+        result.setCode(code);
+        result.setMessage(message);
+        result.setData(null);
+        result.setSuccess(false);
+        return result;
     }
 
     /**
