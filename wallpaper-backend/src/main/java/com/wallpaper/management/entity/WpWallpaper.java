@@ -82,5 +82,5 @@ public class WpWallpaper extends BaseEntity {
     /**
      * 上传用户ID
      */
-    private Long uploaderUserId;
+    private Long uploadUserId;
 } 

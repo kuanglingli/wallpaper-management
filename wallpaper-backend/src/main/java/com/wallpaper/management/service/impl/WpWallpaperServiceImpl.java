@@ -107,7 +107,7 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
             wallpaper.setWidth(width);
             wallpaper.setHeight(height);
             wallpaper.setFileType(suffix);
-            wallpaper.setUploaderUserId(uploadUserId);
+            wallpaper.setUploadUserId(uploadUserId);
             wallpaper.setDownloads(0);
             wallpaper.setViews(0);
             wallpaper.setLikes(0);
@@ -138,8 +138,8 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
     public IPage<WpWallpaper> pageWallpapers(Integer page, Integer pageSize, Long categoryId, Long tagId, String keyword) {
         LambdaQueryWrapper<WpWallpaper> queryWrapper = new LambdaQueryWrapper<>();
 
-        // 状态为已审核
-        queryWrapper.eq(WpWallpaper::getStatus, 1);
+//        // 状态为已审核
+//        queryWrapper.eq(WpWallpaper::getStatus, 1);
 
         // 分类条件
         if (categoryId != null) {
