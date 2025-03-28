@@ -1,8 +1,10 @@
 package com.wallpaper.management.controller;
 
 import com.wallpaper.management.common.Result;
+import com.wallpaper.management.common.ResultCode;
 import com.wallpaper.management.entity.SysUser;
 import com.wallpaper.management.service.SysUserService;
+import com.wallpaper.management.utils.JwtUtil;
 import com.wallpaper.management.vo.LoginResultVO;
 import com.wallpaper.management.vo.LoginVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +15,13 @@ import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.exceptions.TokenExpiredException;
+import java.util.Map;
+import java.util.HashMap;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
@@ -137,5 +146,54 @@ public class SysUserController {
     public Result<Boolean> logout() {
         sysUserService.logout();
         return Result.success(true, "登出成功");
+    }
+
+    /**
+     * 刷新令牌
+     */
+    @PostMapping("/refresh-token")
+    @Operation(summary = "刷新令牌")
+    public Result<Map<String, String>> refreshToken(@RequestBody Map<String, String> params) {
+        String refreshToken = params.get("refreshToken");
+        
+        if (org.springframework.util.StringUtils.hasText(refreshToken)) {
+            try {
+                // 验证刷新令牌
+                DecodedJWT jwt = JwtUtil.parseToken(refreshToken);
+                if (jwt == null) {
+                    return Result.error(ResultCode.TOKEN_INVALID, "无效的刷新令牌");
+                }
+                
+                // 获取用户名
+                String username = JwtUtil.getUsername(refreshToken);
+                if (username == null) {
+                    return Result.error(ResultCode.TOKEN_INVALID, "无效的刷新令牌");
+                }
+                
+                // 查询用户信息
+                SysUser user = sysUserService.getByUsername(username);
+                if (user == null) {
+                    return Result.error(ResultCode.USER_NOT_EXIST, "用户不存在");
+                }
+                
+                // 生成新的访问令牌和刷新令牌
+                String newToken = JwtUtil.generateToken(user.getId(), username);
+                String newRefreshToken = JwtUtil.generateToken(user.getId(), username); // 使用相同的方法生成刷新令牌
+                
+                Map<String, String> tokenMap = new HashMap<>();
+                tokenMap.put("token", newToken);
+                tokenMap.put("refreshToken", newRefreshToken);
+                
+                return Result.success(tokenMap);
+            } catch (TokenExpiredException e) {
+                return Result.error(ResultCode.TOKEN_EXPIRED, "刷新令牌已过期，请重新登录");
+            } catch (JWTVerificationException e) {
+                return Result.error(ResultCode.TOKEN_INVALID, "无效的刷新令牌");
+            } catch (Exception e) {
+                return Result.error(ResultCode.SYSTEM_ERROR, "刷新令牌失败");
+            }
+        } else {
+            return Result.error(ResultCode.PARAM_ERROR, "刷新令牌不能为空");
+        }
     }
 } 

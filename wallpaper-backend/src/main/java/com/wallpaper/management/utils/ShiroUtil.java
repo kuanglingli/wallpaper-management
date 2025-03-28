@@ -32,6 +32,21 @@ public class ShiroUtil {
             return null;
         }
     }
+    
+    /**
+     * 获取当前登录用户ID（非空，如果为空会抛出异常）
+     *
+     * @return 用户ID
+     * @throws IllegalStateException 如果用户未登录或获取ID失败
+     */
+    public static Long getCurrentUserId() {
+        Long userId = getUserId();
+        if (userId == null) {
+            log.error("获取当前用户ID失败：用户未登录或ID为空");
+            throw new IllegalStateException("用户未登录或获取ID失败");
+        }
+        return userId;
+    }
 
     /**
      * 获取当前登录用户名

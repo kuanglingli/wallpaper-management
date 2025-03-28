@@ -44,6 +44,15 @@ const router = createRouter({
             title: '标签管理',
             requiresAuth: true
           }
+        },
+        {
+          path: 'wallpaper-showcase',
+          name: 'wallpaperShowcase',
+          component: () => import('@/views/showcase/index.vue'),
+          meta: {
+            title: '壁纸展示',
+            requiresAuth: false // 设置为false，允许未登录用户访问
+          }
         }
       ]
     },

@@ -16,6 +16,10 @@
             <el-icon><Monitor /></el-icon>
             <span>首页</span>
           </el-menu-item>
+          <el-menu-item index="/wallpaper-showcase">
+            <el-icon><PictureRounded /></el-icon>
+            <span>壁纸展示</span>
+          </el-menu-item>
           <el-menu-item index="/wallpaper">
             <el-icon><Picture /></el-icon>
             <span>壁纸管理</span>
@@ -62,6 +66,7 @@ import { ElMessageBox, ElMessage } from 'element-plus';
 import { 
   Monitor, 
   Picture, 
+  PictureRounded,
   Folder, 
   Collection, 
   ArrowDown 

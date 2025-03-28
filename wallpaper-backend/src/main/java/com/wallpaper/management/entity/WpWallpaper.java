@@ -65,7 +65,14 @@ public class WpWallpaper extends BaseEntity {
     /**
      * 下载次数
      */
-    private Integer downloads;
+    @TableField("download_count")
+    private Integer downloadCount;
+
+    /**
+     * 收藏次数
+     */
+    @TableField("favorite_count")
+    private Integer favoriteCount;
 
     /**
      * 浏览次数
@@ -110,4 +117,7 @@ public class WpWallpaper extends BaseEntity {
      */
     @TableField(exist = false)
     private List<WpTag> tags;
+
+    @TableField(exist = false)
+    private List<Long> tagIds;
 } 

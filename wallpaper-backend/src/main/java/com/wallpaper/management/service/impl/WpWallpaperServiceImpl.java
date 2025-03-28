@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
@@ -130,10 +131,15 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
             wallpaper.setHeight(height);
             wallpaper.setFileType(suffix);
             wallpaper.setUploadUserId(uploadUserId);
-            wallpaper.setDownloads(0);
+            wallpaper.setDownloadCount(0);
             wallpaper.setViews(0);
             wallpaper.setLikes(0);
             wallpaper.setStatus(0); // 默认未审核
+            wallpaper.setCreateTime(LocalDateTime.now());
+            wallpaper.setUpdateTime(LocalDateTime.now());
+            if (uploadUserId==1){
+                wallpaper.setStatus(1);
+            }
 
             // 保存壁纸信息
             save(wallpaper);
@@ -217,7 +223,7 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
         // 简单实现：根据下载量、浏览量和点赞数综合排序
         LambdaQueryWrapper<WpWallpaper> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper
-                .orderByDesc(WpWallpaper::getDownloads)
+                .orderByDesc(WpWallpaper::getDownloadCount)
                 .orderByDesc(WpWallpaper::getViews)
                 .orderByDesc(WpWallpaper::getLikes)
                 .last("LIMIT " + limit);
@@ -249,7 +255,7 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
     public List<WpWallpaper> getHotWallpapers(Integer limit) {
         LambdaQueryWrapper<WpWallpaper> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper
-                .orderByDesc(WpWallpaper::getDownloads)
+                .orderByDesc(WpWallpaper::getDownloadCount)
                 .last("LIMIT " + limit);
         return list(queryWrapper);
     }

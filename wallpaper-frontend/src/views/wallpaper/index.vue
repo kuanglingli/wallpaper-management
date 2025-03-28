@@ -49,7 +49,6 @@
       v-loading="loading"
       :data="wallpaperList"
       style="width: 100%"
-      border
     >
       <el-table-column label="预览" width="100">
         <template #default="{ row }">
@@ -372,7 +371,7 @@ const fetchWallpapers = async () => {
       ...searchForm
     }
     const res = await getWallpaperList(params)
-    wallpaperList.value = res.data.list
+    wallpaperList.value = res.data.records
     total.value = res.data.total
   } catch (error) {
     console.error('获取壁纸列表失败:', error)

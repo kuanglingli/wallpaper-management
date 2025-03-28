@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS `wp_category` (
 CREATE TABLE IF NOT EXISTS `wp_tag` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '标签ID',
   `tag_name` varchar(50) NOT NULL COMMENT '标签名称',
+  `description` varchar(200) DEFAULT NULL COMMENT '标签描述',
+  `wallpaper_count` int(11) DEFAULT 0 COMMENT '关联壁纸数量',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `is_deleted` tinyint(1) DEFAULT 0 COMMENT '是否删除（0-未删除，1-已删除）',
@@ -186,7 +188,7 @@ INSERT INTO `sys_role_permission` (`role_id`, `permission_id`) VALUES (2, 6);
 
 -- 插入管理员账号（密码为加密后的123456）
 INSERT INTO `sys_user` (`username`, `password`, `nickname`, `email`, `status`) 
-VALUES ('admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员', 'admin@example.com', 1);
+VALUES ('admin', 'd35b4f021dea22a29651810361e84848', '系统管理员', 'admin@example.com', 1);
 
 -- 为管理员分配角色
 INSERT INTO `sys_user_role` (`user_id`, `role_id`) VALUES (1, 1);

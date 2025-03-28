@@ -1,5 +1,6 @@
 package com.wallpaper.management.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,9 +15,11 @@ public class WpTag extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
+
     /**
      * 标签名称
      */
+    @TableField("tag_name")
     private String name;
 
     /**

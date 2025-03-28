@@ -16,6 +16,11 @@ public enum ResultCode {
     ERROR(500, "系统错误"),
 
     /**
+     * 系统内部错误
+     */
+    SYSTEM_ERROR(5000, "系统内部错误"),
+
+    /**
      * 未授权
      */
     UNAUTHORIZED(401, "未授权"),
@@ -63,7 +68,12 @@ public enum ResultCode {
     /**
      * 令牌无效
      */
-    TOKEN_INVALID(4006, "令牌无效或已过期"),
+    TOKEN_INVALID(4006, "令牌无效"),
+    
+    /**
+     * 令牌已过期
+     */
+    TOKEN_EXPIRED(4007, "令牌已过期"),
 
     /**
      * 文件上传失败

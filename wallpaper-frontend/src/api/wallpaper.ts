@@ -238,11 +238,12 @@ export function uploadWallpaperImage(file: File, wallpaperData?: Partial<Wallpap
       formData.append('categoryId', wallpaperData.categoryId.toString());
     }
     // 标签ID可能是数组，需要特殊处理
-    if (wallpaperData.tagIds && wallpaperData.tagIds.length > 0) {
-      wallpaperData.tagIds.forEach((tagId, index) => {
-        formData.append(`tagIds[${index}]`, tagId.toString());
-      });
-    }
+    // if (wallpaperData.tagIds && wallpaperData.tagIds.length > 0) {
+    //   wallpaperData.tagIds.forEach((tagId, index) => {
+    //     formData.append(`tagIds[${index}]`, tagId.toString());
+    //   });
+    // }
+    formData.append(`tagIds`, wallpaperData.tagIds);
   }
   
   console.log('上传壁纸参数:', {
@@ -274,4 +275,40 @@ export function getLatestWallpapers(limit: number = 5) {
  */
 export function getHotWallpapers(limit: number = 5) {
   return request.get<any, ApiResponse<Wallpaper[]>>('/wallpaper/hot', { params: { limit }})
+}
+
+/**
+ * 收藏壁纸
+ * @param wallpaperId 壁纸ID
+ * @returns 操作结果
+ */
+export function favoriteWallpaper(wallpaperId: number) {
+  return request.post('/wallpaper/favorite', { wallpaperId });
+}
+
+/**
+ * 取消收藏壁纸
+ * @param wallpaperId 壁纸ID
+ * @returns 操作结果
+ */
+export function unfavoriteWallpaper(wallpaperId: number) {
+  return request.delete(`/wallpaper/favorite/${wallpaperId}`);
+}
+
+/**
+ * 获取用户收藏的壁纸列表
+ * @param params 查询参数
+ * @returns 收藏的壁纸列表
+ */
+export function getFavoriteWallpapers(params: any) {
+  return request.get('/wallpaper/favorite', { params });
+}
+
+/**
+ * 检查壁纸是否已收藏
+ * @param wallpaperId 壁纸ID
+ * @returns 是否已收藏
+ */
+export function checkFavoriteStatus(wallpaperId: number) {
+  return request.get(`/wallpaper/favorite/check/${wallpaperId}`);
 } 

@@ -5,25 +5,27 @@ import router from '@/router'
 
 // 创建axios实例
 const instance: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: (import.meta as any).env.VITE_API_BASE_URL || '/api',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json;charset=utf-8'
   }
 })
 
+// 请求队列，用于存储401状态下的请求
+let requestQueue: Array<{ config: AxiosRequestConfig; resolve: Function; reject: Function }> = []
+
+// 是否正在刷新token
+let isRefreshing = false
+
 // 请求拦截器
 instance.interceptors.request.use(
   (config) => {
     // 在发送请求之前做些什么，比如获取token
     const token = localStorage.getItem('token')
-    console.log('请求拦截器中的token:', token)
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      console.log('添加到请求头的Authorization:', `Bearer ${token}`)
-    } else {
-      console.warn('token为空，未添加Authorization请求头')
     }
     return config
   },
@@ -33,47 +35,95 @@ instance.interceptors.request.use(
   }
 )
 
-// 是否正在刷新的标记
-let isRefreshing = false
 // 重定向到登录页的函数
 const redirectToLogin = () => {
   // 清除认证相关信息
   localStorage.removeItem('token')
   localStorage.removeItem('userInfo')
+  localStorage.removeItem('refreshToken')
   // 记录当前路由，以便登录后返回
   const currentPath = router.currentRoute.value.fullPath
   const loginPath = `/login${currentPath !== '/login' ? `?redirect=${encodeURIComponent(currentPath)}` : ''}`
   
   // 避免重复跳转到登录页
   if (window.location.pathname !== '/login') {
-    console.log('重定向到登录页')
     router.replace(loginPath)
   }
 }
 
+// 刷新token的函数
+const refreshToken = async () => {
+  const refreshToken = localStorage.getItem('refreshToken')
+  if (!refreshToken) {
+    return Promise.reject(new Error('没有刷新令牌'))
+  }
+  
+  try {
+    const response = await axios.post('/api/user/refresh-token', { refreshToken })
+    if (response.data.code === 200) {
+      const { token, refreshToken: newRefreshToken } = response.data.data
+      localStorage.setItem('token', token)
+      localStorage.setItem('refreshToken', newRefreshToken)
+      return token
+    } else {
+      throw new Error(response.data.message || '刷新令牌失败')
+    }
+  } catch (error) {
+    console.error('刷新token失败:', error)
+    return Promise.reject(error)
+  }
+}
+
 // 处理认证失败
-const handleAuthFailure = (message = '登录已过期，请重新登录') => {
-  // 避免多个请求同时触发重定向
+const handleAuthFailure = async (config: AxiosRequestConfig) => {
   if (!isRefreshing) {
     isRefreshing = true
     
-    ElMessage.error(message)
-    // 重定向到登录页
-    redirectToLogin()
-    
-    // 重置标记
-    setTimeout(() => {
+    try {
+      // 尝试刷新token
+      const newToken = await refreshToken()
+      
+      // 更新当前请求的token
+      if (config.headers) {
+        config.headers.Authorization = `Bearer ${newToken}`
+      }
+      
+      // 恢复队列中的请求
+      requestQueue.forEach(({ config, resolve }) => {
+        if (config.headers) {
+          config.headers.Authorization = `Bearer ${newToken}`
+        }
+        resolve(instance(config))
+      })
+      
+      // 清空队列
+      requestQueue = []
+      return instance(config)
+    } catch (error) {
+      console.error('Token刷新失败，需要重新登录:', error)
+      ElMessage.error('登录已过期，请重新登录')
+      redirectToLogin()
+      requestQueue.forEach(({ reject }) => {
+        reject(error)
+      })
+      requestQueue = []
+      return Promise.reject(error)
+    } finally {
       isRefreshing = false
-    }, 1000)
+    }
+  } else {
+    // 正在刷新token，将请求加入队列
+    return new Promise((resolve, reject) => {
+      requestQueue.push({ config, resolve, reject })
+    })
   }
-};
+}
 
 // 响应拦截器
 instance.interceptors.response.use(
   (response) => {
     // 对响应数据做点什么
     const res = response.data
-    console.log('响应拦截器收到响应:', res)
     
     // 如果是退出登录接口，直接返回结果，不进行统一错误处理
     if (response.config.url?.includes('/user/logout')) {
@@ -82,11 +132,10 @@ instance.interceptors.response.use(
     
     if (res.code !== 200) {
       // 处理各种错误情况，如token过期等
-      console.error('响应状态码错误:', res.code, res.message)
       
       // 处理401未授权的情况
       if (res.code === 401) {
-        handleAuthFailure(res.message || '登录已过期，请重新登录')
+        return handleAuthFailure(response.config)
       } else {
         // 其他错误状态码，显示错误信息
         ElMessage.error(res.message || '请求失败')
@@ -98,7 +147,6 @@ instance.interceptors.response.use(
   },
   (error) => {
     // 对响应错误做点什么
-    console.error('请求发生错误:', error)
     
     // 如果是退出登录请求发生错误，直接返回错误，允许上层代码处理
     if (error.config?.url?.includes('/user/logout')) {
@@ -110,7 +158,7 @@ instance.interceptors.response.use(
       
       // 处理401未授权的情况
       if (status === 401) {
-        handleAuthFailure()
+        return handleAuthFailure(error.config)
       } else if (status === 403) {
         ElMessage.error('没有权限访问')
       } else if (status === 404) {

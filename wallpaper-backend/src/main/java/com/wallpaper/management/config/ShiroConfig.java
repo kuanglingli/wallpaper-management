@@ -58,6 +58,7 @@ public class ShiroConfig {
         filterChainDefinitionMap.put("/swagger-resources/**", "anon");
         filterChainDefinitionMap.put("/webjars/**", "anon");
         filterChainDefinitionMap.put("/v3/api-docs/**", "anon");
+        filterChainDefinitionMap.put("/file/**", "anon");
         // 其他所有请求需要JWT认证
         filterChainDefinitionMap.put("/**", "jwt");
 

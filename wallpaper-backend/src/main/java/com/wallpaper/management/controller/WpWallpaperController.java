@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.wallpaper.management.common.Result;
 import com.wallpaper.management.entity.WpTag;
 import com.wallpaper.management.entity.WpWallpaper;
+import com.wallpaper.management.entity.WpWallpaperTag;
 import com.wallpaper.management.service.WpCategoryService;
 import com.wallpaper.management.service.WpTagService;
 import com.wallpaper.management.service.WpWallpaperService;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +109,7 @@ public class WpWallpaperController {
     public Result<WpWallpaper> upload(
             @Parameter(description = "壁纸文件", required = true) @RequestParam MultipartFile file,
             @Parameter(description = "壁纸信息", required = true) @Valid WpWallpaper wallpaper,
-            @Parameter(description = "标签ID列表") @RequestParam(required = false) List<Long> tagIds,
+            @Parameter(description = "标签ID列表") @RequestParam(required = false,value = "tagIds") List<Long> tagIds,
             @Parameter(description = "上传用户ID", required = true) @RequestParam Long uploadUserId) {
         WpWallpaper uploadedWallpaper = wallpaperService.uploadWallpaper(file, wallpaper, tagIds, uploadUserId);
         return Result.success(uploadedWallpaper, "上传成功");
@@ -137,6 +140,10 @@ public class WpWallpaperController {
     @RequiresPermissions("wallpaper:edit")
     public Result<Boolean> update(@Parameter(description = "壁纸信息", required = true) @RequestBody @Valid WpWallpaper wallpaper) {
         boolean result = wallpaperService.updateById(wallpaper);
+        List<Long> tagIds = wallpaper.getTagIds();
+        if (CollectionUtils.isNotEmpty(tagIds)){
+            wallpaperTagService.saveWallpaperTags(wallpaper.getId(),tagIds);
+        }
         return Result.success(result, "修改成功");
     }
 
@@ -282,14 +289,14 @@ public class WpWallpaperController {
         }
         
         // 获取所有相关标签
-        List<Long> allTagIds = wallpaperTagMap.values().stream()
+        List<Long> collection = wallpaperTagMap.values().stream()
                 .flatMap(List::stream)
                 .distinct()
                 .collect(Collectors.toList());
-        
-        Map<Long, WpTag> tagMap = allTagIds.isEmpty() ? 
-                new java.util.HashMap<>() : 
-                tagService.listByIds(allTagIds).stream()
+
+        Map<Long, WpTag> tagMap = collection.isEmpty() ?
+                new java.util.HashMap<>() :
+                tagService.listByIds(collection).stream()
                     .collect(Collectors.toMap(WpTag::getId, Function.identity(), (a, b) -> a));
         
         // 填充壁纸信息
