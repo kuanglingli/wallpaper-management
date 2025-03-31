@@ -112,6 +112,7 @@ public class WpWallpaperController {
             @Parameter(description = "标签ID列表") @RequestParam(required = false,value = "tagIds") List<Long> tagIds,
             @Parameter(description = "上传用户ID", required = true) @RequestParam Long uploadUserId) {
         WpWallpaper uploadedWallpaper = wallpaperService.uploadWallpaper(file, wallpaper, tagIds, uploadUserId);
+        wallpaperService.updateWallpaperTagCountByWallpaperId(uploadedWallpaper.getId());
         return Result.success(uploadedWallpaper, "上传成功");
     }
 
@@ -139,11 +140,13 @@ public class WpWallpaperController {
     @PutMapping
     @RequiresPermissions("wallpaper:edit")
     public Result<Boolean> update(@Parameter(description = "壁纸信息", required = true) @RequestBody @Valid WpWallpaper wallpaper) {
+        wallpaper.setUpdateTime(LocalDateTime.now());
         boolean result = wallpaperService.updateById(wallpaper);
         List<Long> tagIds = wallpaper.getTagIds();
         if (CollectionUtils.isNotEmpty(tagIds)){
             wallpaperTagService.saveWallpaperTags(wallpaper.getId(),tagIds);
         }
+        wallpaperService.updateWallpaperTagCountByWallpaperId(wallpaper.getId());
         return Result.success(result, "修改成功");
     }
 

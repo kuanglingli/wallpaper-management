@@ -82,7 +82,7 @@
               <div class="wallpaper-overlay">
                 <div class="wallpaper-title">{{ wallpaper.title }}</div>
                 <div class="wallpaper-actions">
-                  <el-tooltip content="收藏" placement="top">
+                  <!-- <el-tooltip content="收藏" placement="top">
                     <el-button 
                       circle 
                       :type="wallpaper.isFavorite ? 'danger' : 'default'" 
@@ -99,7 +99,7 @@
                       @click.stop="toggleLike(wallpaper)"
                       size="small"
                     />
-                  </el-tooltip>
+                  </el-tooltip> -->
                   <el-tooltip content="下载" placement="top">
                     <el-button 
                       circle 
@@ -127,23 +127,27 @@
     
     <!-- 分页组件 -->
     <div class="pagination-container">
+      
       <el-pagination
         :current-page="currentPage"
         :page-size="pageSize"
-        :page-sizes="[12, 24, 36, 48]"
+        :page-sizes="[50, 100, 150, 200]"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         background
       />
+      <el-button type="info" style="margin-left: 5%;" @click="handleCommand">
+        退出登录
+      </el-button>
     </div>
     
     <!-- 壁纸预览对话框 -->
     <el-dialog
       v-model="previewDialogVisible"
       :title="currentWallpaper?.title || '壁纸预览'"
-      width="80%"
+      width="60%"
       class="wallpaper-preview-dialog"
       destroy-on-close
     >
@@ -180,20 +184,27 @@
           
           <div class="info-section">
             <h4>统计</h4>
-            <p><el-icon><Download /></el-icon> 下载次数: {{ currentWallpaper?.downloadCount || 0 }}</p>
+            <!-- <p><el-icon><Download /></el-icon> 下载次数: {{ currentWallpaper?.downloadCount || 0 }}</p> -->
             <p><el-icon><Timer /></el-icon> 上传时间: {{ formatDate(currentWallpaper?.createTime) }}</p>
           </div>
           
           <div class="action-buttons">
             <el-button 
+              type="primary"  
+              @click="downloadWallpaper(currentWallpaper)"
+              :loading="downloading"
+            >
+              下载壁纸
+            </el-button>
+            <!-- <el-button 
               type="primary" 
               icon="Download" 
               @click="downloadWallpaper(currentWallpaper)"
               :loading="downloading"
             >
               下载壁纸
-            </el-button>
-            <el-button 
+            </el-button> -->
+            <!-- <el-button 
               :type="currentWallpaper?.isFavorite ? 'danger' : 'default'" 
               :icon="currentWallpaper?.isFavorite ? 'Star' : 'StarFilled'" 
               @click="toggleFavorite(currentWallpaper)"
@@ -206,7 +217,7 @@
               @click="toggleLike(currentWallpaper)"
             >
               {{ currentWallpaper?.isLiked ? '取消点赞' : '点赞壁纸' }}
-            </el-button>
+            </el-button> -->
           </div>
         </div>
       </div>
@@ -216,11 +227,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture, Download, Star, Timer, Search, Goods, GoodsFilled } from '@element-plus/icons-vue'
 import { getWallpaperList, getWallpaperDetail, favoriteWallpaper, unfavoriteWallpaper } from '@/api/wallpaper'
 import { getAllCategories } from '@/api/category'
 import type { Wallpaper, Category } from '@/types'
+import { logout } from '@/api/user';
 
 // 状态管理
 const loading = ref(false)
@@ -231,7 +244,8 @@ const wallpapers = ref<any[]>([])
 const categories = ref<Category[]>([])
 const total = ref(0)
 const currentPage = ref(1)
-const pageSize = ref(12)
+const pageSize = ref(50)
+const router = useRouter();
 
 // 预览相关
 const previewDialogVisible = ref(false)
@@ -240,10 +254,11 @@ const currentWallpaper = ref<any | null>(null)
 // 搜索防抖
 let searchTimer: any = null
 const debounceSearch = () => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    fetchWallpapers()
-  }, 500)
+  // clearTimeout(searchTimer)
+  // searchTimer = setTimeout(() => {
+  //   fetchWallpapers()
+  // }, 500)
+  fetchWallpapers();
 }
 
 // 初始化加载数据
@@ -253,6 +268,60 @@ onMounted(async () => {
     fetchWallpapers()
   ])
 })
+
+const handleCommand = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要退出登录吗？',
+      '退出登录',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    
+    // 显示退出登录中的加载状态
+    const loading = ElMessage.info({
+      message: '正在退出登录...',
+      duration: 0
+    });
+    
+    try {
+      // 调用退出接口
+      const res = await logout();
+      console.log('退出登录成功:', res);
+      
+      // 关闭加载提示
+      loading.close();
+      
+      // 清除本地存储的用户信息和token
+      localStorage.removeItem('token');
+      localStorage.removeItem('userInfo');
+      
+      // 显示退出成功提示
+      ElMessage.success('已退出登录');
+      
+      // 跳转到登录页
+      router.push('/login');
+    } catch (error) {
+      console.error('退出登录失败:', error);
+      
+      // 关闭加载提示
+      loading.close();
+      
+      // 即使API调用失败，也清除本地存储并跳转到登录页
+      localStorage.removeItem('token');
+      localStorage.removeItem('userInfo');
+      
+      ElMessage.warning('退出登录请求失败，已强制登出');
+      router.push('/login');
+    }
+  } catch {
+    // 用户取消退出登录
+    console.log('用户取消了退出登录');
+  }
+};
 
 // 获取所有分类
 const fetchCategories = async () => {
@@ -274,7 +343,7 @@ const fetchWallpapers = async () => {
     const params = {
       pageNum: currentPage.value,
       pageSize: pageSize.value,
-      title: searchKeyword.value || undefined,
+      keyword: searchKeyword.value || undefined,
       categoryId: selectedCategory.value || undefined
     }
     
@@ -287,11 +356,11 @@ const fetchWallpapers = async () => {
       
       // 请求每个壁纸的收藏状态（假设后端有此接口）
       // 这里模拟一下，实际项目中应该调用真实接口
-      wallpapers.value = wallpapers.value.map(wallpaper => ({
-        ...wallpaper,
-        isFavorite: Math.random() > 0.5, // 模拟随机收藏状态
-        isLiked: Math.random() > 0.5     // 模拟随机点赞状态
-      }))
+      // wallpapers.value = wallpapers.value.map(wallpaper => ({
+      //   ...wallpaper,
+      //   isFavorite: Math.random() > 0.5, // 模拟随机收藏状态
+      //   isLiked: Math.random() > 0.5     // 模拟随机点赞状态
+      // }))
     }
   } catch (error) {
     console.error('获取壁纸列表失败:', error)
@@ -353,19 +422,31 @@ const downloadWallpaper = (wallpaper: Wallpaper | null) => {
   
   // 创建一个新的a标签
   const link = document.createElement('a')
-  link.href = wallpaper.imageUrl
+  // link.href = wallpaper.imageUrl
   link.target = '_blank'
+  link.style.display = "none";
   // 提取文件名
   const filename = wallpaper.imageUrl.substring(wallpaper.imageUrl.lastIndexOf('/') + 1)
-  link.download = `${wallpaper.title || 'wallpaper'}_${filename}`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+
+  fetch(wallpaper.imageUrl).then(res => res.blob()).then((blob) => {
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    ElMessage.success('开始下载壁纸')
+    document.body.removeChild(link);
+  });
+  downloading.value = false
+  // link.setAttribute("download", filename);
+  // link.download = `${wallpaper.title || 'wallpaper'}_${filename}`
+  // document.body.appendChild(link)
+  // link.click()
+  // document.body.removeChild(link)
   
-  setTimeout(() => {
-    downloading.value = false
-    ElMessage.success('壁纸已开始下载')
-  }, 1000)
+  // setTimeout(() => {
+  //   downloading.value = false
+  //   ElMessage.success('壁纸已开始下载')
+  // }, 1000)
 }
 
 // 预览壁纸

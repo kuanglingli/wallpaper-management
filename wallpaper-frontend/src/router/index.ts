@@ -51,10 +51,19 @@ const router = createRouter({
           component: () => import('@/views/showcase/index.vue'),
           meta: {
             title: '壁纸展示',
-            requiresAuth: false // 设置为false，允许未登录用户访问
+            requiresAuth: true // 设置为false，允许未登录用户访问
           }
         }
       ]
+    },
+    {
+      path: '/wallpaper-showcase',
+      name: 'wallpaperShowcase',
+      component: () => import('@/views/showcase/index.vue'),
+      meta: {
+        title: '壁纸展示',
+        requiresAuth: true // 设置为false，允许未登录用户访问
+      }
     },
     {
       path: '/login',

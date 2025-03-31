@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-card">
       <template #header>
-        <h2 class="login-title">壁纸管理系统</h2>
+        <h2 class="login-title">免费图片商店</h2>
       </template>
       <el-form
         ref="loginFormRef"
@@ -106,17 +106,20 @@ const handleLogin = async () => {
         
         let token = null
         let userInfo = null
+        let isAdmin = false
         
         // 检查token可能存在的位置
         if (res.token) {
           // token直接在响应根级别
           token = res.token
           userInfo = res.userInfo
+          isAdmin = res.isAdmin
           console.log('找到根级别的token')
         } else if (res.data && res.data.token) {
           // token在data字段中
           token = res.data.token
           userInfo = res.data.userInfo
+          isAdmin = res.data.isAdmin
           console.log('找到data中的token')
         } else if (typeof res === 'string') {
           // 如果响应直接是字符串token
@@ -160,7 +163,8 @@ const handleLogin = async () => {
         
         // 如果有重定向参数，跳转到指定页面，否则跳转到首页
         const redirect = route.query.redirect as string
-        router.push(redirect || '/home')
+        const targetUrl = isAdmin?'/home':'/wallpaper-showcase';
+        router.push(redirect || targetUrl)
       } catch (error: any) {
         console.error('登录失败:', error)
         // 针对不同类型的错误提供更友好的提示

@@ -60,3 +60,7 @@ html, body {
 .el-table .el-table__cell {
   position:static !important;
 }
+
+.preview-image {
+  max-height:1920px !important;
+}

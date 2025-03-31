@@ -3,7 +3,7 @@
     <el-container>
       <el-aside width="200px">
         <div class="logo">
-          <h3>壁纸管理系统</h3>
+          <h3>共享壁纸</h3>
         </div>
         <el-menu
           router
@@ -207,5 +207,9 @@ const handleCommand = async (command: string) => {
 .el-main {
   background-color: #f0f2f5;
   padding: 20px;
+}
+
+.el-dropdown {
+  vertical-align:middle !important;
 }
 </style> 

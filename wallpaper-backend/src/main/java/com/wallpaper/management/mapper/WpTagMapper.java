@@ -5,6 +5,8 @@ import com.wallpaper.management.entity.WpTag;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 /**
  * 标签Mapper接口
  */
@@ -19,4 +21,13 @@ public interface WpTagMapper extends BaseMapper<WpTag> {
      * @return 影响的行数
      */
     int incrementWallpaperCount(@Param("tagId") Long tagId, @Param("increment") int increment);
+
+    /**
+     * 获取所有标签
+     *
+     * @return 标签列表
+     */
+    List<WpTag> selectAllTags();
+
+    List<WpTag> selectHotTags();
 } 

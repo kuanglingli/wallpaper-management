@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 标签服务实现类
  */
@@ -36,4 +38,14 @@ public class WpTagServiceImpl extends ServiceImpl<WpTagMapper, WpTag> implements
             return false;
         }
     }
-} 
+
+    @Override
+    public List<WpTag> getAllTags() {
+        return tagMapper.selectAllTags();
+    }
+
+    @Override
+    public List<WpTag> getHotTags() {
+        return tagMapper.selectHotTags();
+    }
+}

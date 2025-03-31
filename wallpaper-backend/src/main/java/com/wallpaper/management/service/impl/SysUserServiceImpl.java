@@ -21,6 +21,7 @@ import org.apache.shiro.subject.Subject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
@@ -104,6 +105,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             log.error("生成token失败，为空值 - username: {}", username);
             throw new BusinessException("生成token失败");
         }
+        int count = baseMapper.isAdminByUserId(user.getId());
 
         // 返回登录结果
         LoginResultVO loginResult = new LoginResultVO();
@@ -111,6 +113,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 安全起见，将密码置空
         user.setPassword(null);
         loginResult.setUserInfo(user);
+        loginResult.setIsAdmin(count>0);
         
         log.info("用户登录成功 - username: {}, token: {}", username, token);
         return loginResult;
@@ -135,6 +138,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         
         // 加密密码
         user.setPassword(encryptPassword(user.getPassword()));
+        user.setNickname(user.getUsername());
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
         
         // 保存用户
         return save(user);

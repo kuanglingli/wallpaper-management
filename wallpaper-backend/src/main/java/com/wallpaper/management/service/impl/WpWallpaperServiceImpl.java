@@ -4,23 +4,27 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wallpaper.management.common.ResultCode;
+import com.wallpaper.management.entity.WpTag;
 import com.wallpaper.management.entity.WpWallpaper;
+import com.wallpaper.management.entity.WpWallpaperTag;
 import com.wallpaper.management.exception.BusinessException;
 import com.wallpaper.management.mapper.WpWallpaperMapper;
 import com.wallpaper.management.service.WpCategoryService;
+import com.wallpaper.management.service.WpTagService;
 import com.wallpaper.management.service.WpWallpaperService;
 import com.wallpaper.management.service.WpWallpaperTagService;
 import com.wallpaper.management.util.ImageUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -44,6 +48,7 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
 
     private final WpCategoryService categoryService;
     private final WpWallpaperTagService wallpaperTagService;
+    private final WpTagService tagService;
 
     @Value("${file.upload.path}")
     private String uploadPath;
@@ -330,4 +335,28 @@ public class WpWallpaperServiceImpl extends ServiceImpl<WpWallpaperMapper, WpWal
         List<String> types = Arrays.asList(allowedTypes.split(","));
         return types.contains(suffix.toLowerCase());
     }
-} 
+
+    @Override
+    public void updateWallpaperTagCountByWallpaperId(Long wallpaperId) {
+        if (wallpaperId==null||wallpaperId==0){
+            return;
+        }
+        LambdaQueryWrapper<WpWallpaperTag> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WpWallpaperTag::getWallpaperId,wallpaperId);
+        List<WpWallpaperTag> list = wallpaperTagService.list(wrapper);
+        if (CollectionUtils.isNotEmpty(list)){
+            LambdaQueryWrapper<WpWallpaperTag> tagLambdaQueryWrapper = null;
+            LambdaUpdateWrapper<WpTag> tagLambdaUpdateWrapper = null;
+            for (WpWallpaperTag wallpaperTag:list){
+                tagLambdaQueryWrapper = new LambdaQueryWrapper<>();
+                tagLambdaQueryWrapper.eq(WpWallpaperTag::getTagId,wallpaperTag.getTagId());
+                long count = wallpaperTagService.count(tagLambdaQueryWrapper);
+                tagLambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+                tagLambdaUpdateWrapper.eq(WpTag::getId,wallpaperTag.getTagId())
+                        .set(WpTag::getWallpaperCount,count);
+                tagService.update(tagLambdaUpdateWrapper);
+            }
+
+        }
+    }
+}

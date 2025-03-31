@@ -83,4 +83,6 @@ public interface WpWallpaperService extends IService<WpWallpaper> {
      * @return 是否成功
      */
     boolean auditWallpaper(Long id, Integer status);
+
+    void updateWallpaperTagCountByWallpaperId(Long wallpaperId);
 } 

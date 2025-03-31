@@ -32,4 +32,7 @@ public class LoginResultVO implements Serializable {
      */
     @Schema(description = "用户信息")
     private SysUser userInfo;
+
+    @Schema(description = "是否管理员")
+    private Boolean isAdmin;
 } 
