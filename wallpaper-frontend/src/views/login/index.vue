@@ -37,9 +37,9 @@
             登录
           </el-button>
         </el-form-item>
-        <div class="register-link">
+        <!-- <div class="register-link">
           <el-link type="primary" @click="goToRegister">没有账号？点击注册</el-link>
-        </div>
+        </div> -->
       </el-form>
     </el-card>
   </div>
